@@ -1,0 +1,12 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "LAPS (local)",
+            "request": "launch",
+            "mainClass": "com.iss.laps.LapsApplication",
+            "projectName": "laps",
+            "vmArgs": "-Dspring.profiles.active=local"
+        }
+    ]
+}

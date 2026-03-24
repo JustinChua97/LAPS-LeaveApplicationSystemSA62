@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{common/layout :: layout(~{::section})}">
+<body>
+<section th:fragment="content">
+    <h4 class="mb-3"><i class="bi bi-gear"></i> Admin Dashboard</h4>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card stat-card border-primary mb-3 card-hover">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small text-uppercase">Total Employees</div>
+                        <div class="fs-2 fw-bold" th:text="${totalEmployees}">0</div>
+                    </div>
+                    <i class="bi bi-people fs-1 text-primary opacity-25"></i>
+                </div>
+                <div class="card-footer p-1 text-center">
+                    <a th:href="@{/admin/employees}" class="small text-decoration-none">Manage Employees &rarr;</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card border-success mb-3 card-hover">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small text-uppercase">Leave Types</div>
+                        <div class="fs-2 fw-bold" th:text="${totalLeaveTypes}">0</div>
+                    </div>
+                    <i class="bi bi-list-check fs-1 text-success opacity-25"></i>
+                </div>
+                <div class="card-footer p-1 text-center">
+                    <a th:href="@{/admin/leave-types}" class="small text-decoration-none">Manage Leave Types &rarr;</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card border-warning mb-3 card-hover">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small text-uppercase">Public Holidays (Year)</div>
+                        <div class="fs-2 fw-bold" th:text="${totalHolidays}">0</div>
+                    </div>
+                    <i class="bi bi-calendar-event fs-1 text-warning opacity-25"></i>
+                </div>
+                <div class="card-footer p-1 text-center">
+                    <a th:href="@{/admin/holidays}" class="small text-decoration-none">Manage Holidays &rarr;</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-person-plus fs-1 text-primary"></i>
+                    <h6 class="mt-2">Add Employee</h6>
+                    <a th:href="@{/admin/employees/new}" class="btn btn-primary btn-sm mt-1">Create</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-calendar-plus fs-1 text-warning"></i>
+                    <h6 class="mt-2">Add Public Holiday</h6>
+                    <a th:href="@{/admin/holidays/new}" class="btn btn-warning btn-sm mt-1">Add Holiday</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-eye fs-1 text-info"></i>
+                    <h6 class="mt-2">Movement Register</h6>
+                    <a th:href="@{/movement}" class="btn btn-info btn-sm mt-1">View</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{common/layout :: layout(~{::section})}">
+<body>
+<section th:fragment="content">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4><i class="bi bi-calendar-event"></i> Public Holidays
+            <span class="badge bg-secondary ms-1" th:text="${year}"></span>
+        </h4>
+        <div class="d-flex gap-2">
+            <select class="form-select form-select-sm" style="width:120px;"
+                    onchange="window.location='/admin/holidays?year='+this.value">
+                <option th:each="y : ${#numbers.sequence(2024, 2030)}"
+                        th:value="${y}" th:text="${y}"
+                        th:selected="${y == year}"></option>
+            </select>
+            <a th:href="@{/admin/holidays/new}" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-circle"></i> Add Holiday
+            </a>
+        </div>
+    </div>
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div th:if="${#lists.isEmpty(holidays)}" class="p-4 text-center text-muted">
+                No holidays defined for <span th:text="${year}"></span>.
+            </div>
+            <table class="table table-hover table-sm mb-0" th:unless="${#lists.isEmpty(holidays)}">
+                <thead class="table-light">
+                    <tr><th>Date</th><th>Day</th><th>Description</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                    <tr th:each="h : ${holidays}">
+                        <td th:text="${h.holidayDate}"></td>
+                        <td th:text="${h.holidayDate.dayOfWeek.getDisplayName(T(java.time.format.TextStyle).FULL, T(java.util.Locale).ENGLISH)}"></td>
+                        <td th:text="${h.description}"></td>
+                        <td>
+                            <button type="button" class="btn btn-outline-danger btn-sm"
+                                    th:data-url="@{'/admin/holidays/' + ${h.id} + '/delete'}"
+                                    data-confirm="Delete this public holiday?"
+                                    onclick="confirmPost(this)">Delete</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+</body>
+</html>

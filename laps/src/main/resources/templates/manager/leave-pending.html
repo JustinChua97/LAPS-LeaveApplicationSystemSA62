@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{common/layout :: layout(~{::section})}">
+<body>
+<section th:fragment="content">
+    <h4 class="mb-3"><i class="bi bi-hourglass-split"></i> Leave Applications Pending Approval</h4>
+
+    <div th:if="${grouped.isEmpty()}" class="alert alert-info">
+        <i class="bi bi-info-circle"></i> No pending leave applications.
+    </div>
+
+    <div th:each="entry : ${grouped}" class="card mb-4 shadow-sm">
+        <div class="card-header bg-light fw-semibold">
+            <i class="bi bi-person-circle"></i> <span th:text="${entry.key}">Employee Name</span>
+            <span class="badge bg-secondary ms-2" th:text="${entry.value.size()} + ' pending'"></span>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover table-sm mb-0">
+                <thead class="table-light">
+                    <tr><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Reason</th><th>Applied On</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                    <tr th:each="la : ${entry.value}">
+                        <td th:text="${la.leaveType.name}"></td>
+                        <td th:text="${la.startDate}"></td>
+                        <td th:text="${la.endDate}"></td>
+                        <td><span class="duration-pill" th:text="${la.duration}"></span></td>
+                        <td class="text-truncate" style="max-width:120px;" th:text="${la.reason}"></td>
+                        <td th:text="${#temporals.format(la.appliedDate,'dd MMM yyyy')}"></td>
+                        <td>
+                            <a th:href="@{'/manager/leaves/' + ${la.id}}"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> Review
+                            </a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+</body>
+</html>

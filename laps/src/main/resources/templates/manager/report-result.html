@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{common/layout :: layout(~{::section})}">
+<body>
+<section th:fragment="content">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4><i class="bi bi-table"></i> Leave Report Results</h4>
+        <div class="d-flex gap-2">
+            <a th:href="@{/manager/reports/leave/export(startDate=${startDate},endDate=${endDate},leaveTypeId=${selectedLeaveTypeId})}"
+               class="btn btn-success btn-sm">
+                <i class="bi bi-download"></i> Export CSV
+            </a>
+            <a th:href="@{/manager/reports}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> New Report
+            </a>
+        </div>
+    </div>
+
+    <div class="alert alert-info small">
+        Showing approved leaves from <strong th:text="${startDate}"></strong>
+        to <strong th:text="${endDate}"></strong>.
+        Total records: <strong th:text="${results.size()}"></strong>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div th:if="${results.isEmpty()}" class="p-4 text-center text-muted">
+                No approved leave records found for the selected criteria.
+            </div>
+            <table class="table table-hover table-sm mb-0" th:unless="${results.isEmpty()}">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th><th>Employee</th><th>Leave Type</th>
+                        <th>From</th><th>To</th><th>Days</th><th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="la, stat : ${results}">
+                        <td th:text="${stat.count}"></td>
+                        <td th:text="${la.employee.name}"></td>
+                        <td th:text="${la.leaveType.name}"></td>
+                        <td th:text="${la.startDate}"></td>
+                        <td th:text="${la.endDate}"></td>
+                        <td><span class="duration-pill" th:text="${la.duration}"></span></td>
+                        <td class="text-truncate" style="max-width:200px;" th:text="${la.reason}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+</body>
+</html>

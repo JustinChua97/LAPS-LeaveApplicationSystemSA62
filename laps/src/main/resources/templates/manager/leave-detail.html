@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{common/layout :: layout(~{::section})}">
+<body>
+<section th:fragment="content">
+    <div class="row">
+        <div class="col-lg-7">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-file-earmark-text"></i> Leave Application</h5>
+                    <span class="badge fs-6"
+                          th:classappend="'badge-' + ${leave.status.name().toLowerCase()}"
+                          th:text="${leave.status}"></span>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-5">Employee</dt>
+                        <dd class="col-sm-7 fw-semibold" th:text="${leave.employee.name}"></dd>
+                        <dt class="col-sm-5">Leave Type</dt>
+                        <dd class="col-sm-7" th:text="${leave.leaveType.name}"></dd>
+                        <dt class="col-sm-5">Period</dt>
+                        <dd class="col-sm-7">
+                            <span th:text="${leave.startDate}"></span> &mdash;
+                            <span th:text="${leave.endDate}"></span>
+                            (<span th:text="${leave.duration}"></span> day(s))
+                        </dd>
+                        <dt class="col-sm-5">Reason</dt>
+                        <dd class="col-sm-7" th:text="${leave.reason}"></dd>
+                        <dt class="col-sm-5" th:if="${leave.workDissemination != null}">Work Dissemination</dt>
+                        <dd class="col-sm-7" th:if="${leave.workDissemination != null}"
+                            th:text="${leave.workDissemination}"></dd>
+                        <dt class="col-sm-5" th:if="${leave.contactDetails != null}">Contact (Overseas)</dt>
+                        <dd class="col-sm-7" th:if="${leave.contactDetails != null}"
+                            th:text="${leave.contactDetails}"></dd>
+                        <dt class="col-sm-5">Applied On</dt>
+                        <dd class="col-sm-7"
+                            th:text="${#temporals.format(leave.appliedDate,'dd MMM yyyy HH:mm')}"></dd>
+                    </dl>
+                </div>
+
+                <!-- Approve / Reject controls (only when pending) -->
+                <div class="card-footer"
+                     th:if="${leave.status.name() == 'APPLIED' or leave.status.name() == 'UPDATED'}">
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold">Manager Comment
+                            <span class="text-muted small">(mandatory for rejection)</span>
+                        </label>
+                        <textarea id="managerComment" class="form-control" rows="2"
+                                  placeholder="Add a comment..."></textarea>
+                    </div>
+                    <div class="d-flex gap-2 mt-2">
+                        <button type="button" class="btn btn-success"
+                                th:data-url="@{'/manager/leaves/' + ${leave.id} + '/approve'}"
+                                data-confirm="Approve this leave application?"
+                                data-comment-field="managerComment"
+                                onclick="confirmPostWithComment(this)">
+                            <i class="bi bi-check-circle"></i> Approve
+                        </button>
+                        <button type="button" class="btn btn-danger"
+                                th:data-url="@{'/manager/leaves/' + ${leave.id} + '/reject'}"
+                                data-confirm="Reject this leave application? A comment is required."
+                                data-comment-field="managerComment"
+                                onclick="confirmPostWithComment(this)">
+                            <i class="bi bi-x-circle"></i> Reject
+                        </button>
+                        <a th:href="@{/manager/leaves}" class="btn btn-outline-secondary ms-auto">
+                            <i class="bi bi-arrow-left"></i> Back
+                        </a>
+                    </div>
+                </div>
+                <div class="card-footer" th:unless="${leave.status.name() == 'APPLIED' or leave.status.name() == 'UPDATED'}">
+                    <a th:href="@{/manager/leaves}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Back
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conflicting leave during same period -->
+        <div class="col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-people"></i> Other Subordinates on Leave
+                        (<span th:text="${leave.startDate}"></span> &ndash; <span th:text="${leave.endDate}"></span>)
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <div th:if="${#lists.isEmpty(conflicting)}" class="p-3 text-muted small">
+                        No other subordinates on leave during this period.
+                    </div>
+                    <table class="table table-sm mb-0" th:unless="${#lists.isEmpty(conflicting)}">
+                        <thead class="table-light">
+                            <tr><th>Name</th><th>Type</th><th>From</th><th>To</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="c : ${conflicting}"
+                                th:unless="${c.id == leave.id}">
+                                <td th:text="${c.employee.name}"></td>
+                                <td th:text="${c.leaveType.name}"></td>
+                                <td th:text="${c.startDate}"></td>
+                                <td th:text="${c.endDate}"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+</body>
+</html>
