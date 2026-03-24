@@ -96,7 +96,6 @@ class LeaveServiceTest {
         sampleApplication.setStartDate(LocalDate.of(2026, 4, 10));
         sampleApplication.setEndDate(LocalDate.of(2026, 4, 7));
         when(leaveTypeRepo.findById(1L)).thenReturn(Optional.of(annualLeaveType));
-        when(publicHolidayRepo.findByYear(anyInt())).thenReturn(List.of());
 
         assertThatThrownBy(() -> leaveService.applyLeave(sampleApplication, employee))
                 .isInstanceOf(LeaveApplicationException.class)
