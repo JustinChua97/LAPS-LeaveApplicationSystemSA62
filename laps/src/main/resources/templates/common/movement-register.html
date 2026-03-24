@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{common/layout :: layout(~{::section})}">
+<body>
+<section th:fragment="content">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4><i class="bi bi-calendar3"></i> Movement Register</h4>
+        <div class="d-flex gap-2 align-items-center">
+            <select class="form-select form-select-sm" style="width:140px;"
+                    onchange="navigateMonth(this)">
+                <option th:each="m : ${#numbers.sequence(1, 12)}"
+                        th:value="${m}"
+                        th:text="${monthNames[m]}"
+                        th:selected="${m == selectedMonth}"></option>
+            </select>
+            <select class="form-select form-select-sm" style="width:100px;" id="yearSelect"
+                    onchange="navigateMonth(this)">
+                <option th:each="y : ${#numbers.sequence(2024, 2030)}"
+                        th:value="${y}" th:text="${y}"
+                        th:selected="${y == selectedYear}"></option>
+            </select>
+        </div>
+    </div>
+
+    <div class="alert alert-light border">
+        Showing employees on approved leave in
+        <strong th:text="${monthNames[selectedMonth] + ' ' + selectedYear}"></strong>.
+        Total: <strong th:text="${leaves.size()}"></strong> record(s).
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div th:if="${leaves.isEmpty()}" class="p-4 text-center text-muted">
+                <i class="bi bi-inbox fs-2"></i>
+                <p class="mt-2">No employees on leave during this period.</p>
+            </div>
+            <table class="table table-hover table-sm mb-0" th:unless="${leaves.isEmpty()}">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Employee</th>
+                        <th>Leave Type</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Days</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="la, stat : ${leaves}">
+                        <td th:text="${stat.count}"></td>
+                        <td th:text="${la.employee.name}"></td>
+                        <td>
+                            <span class="badge bg-primary" th:text="${la.leaveType.name}"></span>
+                        </td>
+                        <td th:text="${la.startDate}"></td>
+                        <td th:text="${la.endDate}"></td>
+                        <td><span class="duration-pill" th:text="${la.duration}"></span></td>
+                        <td class="text-truncate" style="max-width:200px;"
+                            th:text="${la.reason}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function navigateMonth(changed) {
+            const monthEl = document.querySelector('select[onchange="navigateMonth(this)"]');
+            const yearEl  = document.getElementById('yearSelect');
+            const month = monthEl.value;
+            const year  = yearEl.value;
+            window.location.replace('/movement?year=' + encodeURIComponent(year)
+                                  + '&month=' + encodeURIComponent(month));
+        }
+    </script>
+</section>
+</body>
+</html>

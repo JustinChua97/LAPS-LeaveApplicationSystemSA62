@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{common/layout :: layout(~{::section})}">
+<body>
+<section th:fragment="content">
+    <h4 class="mb-3"><i class="bi bi-clock-history"></i> Compensation Leave Claim</h4>
+    <div class="row">
+        <div class="col-lg-5">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0">Submit New Claim</h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small">Every 4 hours of overtime = 0.5 day compensation leave.</p>
+                    <form th:action="@{/employee/compensation/claim}" th:object="${claim}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Overtime Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" th:field="*{overtimeDate}"
+                                   th:max="${today}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Overtime Hours <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" th:field="*{overtimeHours}"
+                                   min="4" step="4" placeholder="Minimum 4 hours" required>
+                            <div class="form-text">Must be a multiple of 4 (4h = 0.5 day comp leave)</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Reason</label>
+                            <textarea class="form-control" th:field="*{reason}" rows="2"
+                                      placeholder="Brief description of overtime work"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-send"></i> Submit Claim
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-7">
+            <div class="card shadow-sm">
+                <div class="card-header"><h6 class="mb-0">My Claims History</h6></div>
+                <div class="card-body p-0">
+                    <div th:if="${#lists.isEmpty(myClaims)}" class="p-3 text-center text-muted">
+                        No claims submitted yet.
+                    </div>
+                    <table class="table table-sm table-hover mb-0" th:unless="${#lists.isEmpty(myClaims)}">
+                        <thead class="table-light">
+                            <tr><th>Overtime Date</th><th>Hours</th><th>Comp Days</th><th>Status</th><th>Comment</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="c : ${myClaims}">
+                                <td th:text="${c.overtimeDate}"></td>
+                                <td th:text="${c.overtimeHours}"></td>
+                                <td th:text="${c.compensationDays}"></td>
+                                <td>
+                                    <span class="badge"
+                                          th:classappend="${c.status.name() == 'APPROVED'} ? 'bg-success' : (${c.status.name() == 'REJECTED'} ? 'bg-danger' : 'badge-pending')"
+                                          th:text="${c.status}"></span>
+                                </td>
+                                <td class="small text-muted" th:text="${c.managerComment}"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+</body>
+</html>

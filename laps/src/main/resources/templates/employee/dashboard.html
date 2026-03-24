@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{common/layout :: layout(~{::section})}">
+<body>
+<section th:fragment="content">
+    <div class="row mb-3">
+        <div class="col">
+            <h4><i class="bi bi-house"></i> My Dashboard</h4>
+            <p class="text-muted">Welcome, <strong th:text="${employee.name}">Employee</strong>
+                (<span th:text="${employee.designation.name().replace('_',' ')}"></span>)</p>
+        </div>
+        <div class="col-auto">
+            <a th:href="@{/employee/leaves/apply}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Apply Leave
+            </a>
+        </div>
+    </div>
+
+    <!-- Leave Entitlement Summary -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h6 class="text-muted text-uppercase fw-bold mb-2">Leave Balance (Current Year)</h6>
+        </div>
+        <div class="col-md-4" th:each="ent : ${entitlements}">
+            <div class="card stat-card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted small" th:text="${ent.leaveType.name}">Leave Type</div>
+                            <div class="fs-4 fw-bold" th:text="${ent.remainingDays}">0</div>
+                            <div class="text-muted small">
+                                days remaining of <span th:text="${ent.totalDays}">0</span>
+                            </div>
+                        </div>
+                        <div class="fs-1 text-primary opacity-25">
+                            <i class="bi bi-calendar2-check"></i>
+                        </div>
+                    </div>
+                    <div class="progress mt-2" style="height:4px;">
+                        <div class="progress-bar"
+                             th:style="'width:' + (${ent.totalDays} > 0 ? ${ent.usedDays} / ${ent.totalDays} * 100 : 0) + '%'"
+                             role="progressbar"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Leave Applications -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-clock-history"></i> Recent Leave Applications</span>
+            <a th:href="@{/employee/leaves}" class="btn btn-sm btn-outline-primary">View All</a>
+        </div>
+        <div class="card-body p-0">
+            <div th:if="${#lists.isEmpty(recentLeaves)}" class="p-3 text-center text-muted">
+                No leave applications found.
+            </div>
+            <table class="table table-hover table-sm mb-0" th:unless="${#lists.isEmpty(recentLeaves)}">
+                <thead class="table-light">
+                    <tr>
+                        <th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th><th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="leave : ${recentLeaves}">
+                        <td th:text="${leave.leaveType.name}"></td>
+                        <td th:text="${leave.startDate}"></td>
+                        <td th:text="${leave.endDate}"></td>
+                        <td><span class="duration-pill" th:text="${leave.duration}"></span></td>
+                        <td>
+                            <span class="badge"
+                                  th:classappend="'badge-' + ${leave.status.name().toLowerCase()}"
+                                  th:text="${leave.status}"></span>
+                        </td>
+                        <td>
+                            <a th:href="@{'/employee/leaves/' + ${leave.id}}"
+                               class="btn btn-xs btn-outline-secondary btn-sm">View</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+</body>
+</html>

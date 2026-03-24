@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{common/layout :: layout(~{::section})}">
+<body>
+<section th:fragment="content">
+    <h4 class="mb-3"><i class="bi bi-bar-chart"></i> Leave Reports</h4>
+
+    <div class="card shadow-sm">
+        <div class="card-header">Generate Leave Report</div>
+        <div class="card-body">
+            <form th:action="@{/manager/reports/leave}" method="get">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">From Date <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" name="startDate"
+                               th:value="${today.withDayOfMonth(1)}" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">To Date <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" name="endDate"
+                               th:value="${today}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Leave Type</label>
+                        <select class="form-select" name="leaveTypeId">
+                            <option value="">All Leave Types</option>
+                            <option th:each="leaveType : ${leaveTypes}"
+                                    th:value="${leaveType.id}"
+                                    th:text="${leaveType.name}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-search"></i> Generate
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+</body>
+</html>

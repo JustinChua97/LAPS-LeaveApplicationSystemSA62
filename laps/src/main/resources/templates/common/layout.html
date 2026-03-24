@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:fragment="layout(content)">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${pageTitle != null ? pageTitle + ' - LAPS' : 'LAPS - Leave Application Processing System'}">LAPS</title>
+    <!-- Assets served locally via WebJars — no external CDN dependency -->
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}">
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap-icons/font/bootstrap-icons.css}">
+    <link rel="stylesheet" th:href="@{/css/laps.css}">
+    <!-- CSRF token exposed as meta tags so JS-based logout can read it -->
+    <meta name="_csrf"        th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" th:href="@{/}">
+            <i class="bi bi-calendar-check"></i> LAPS
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navMenu">
+            <ul class="navbar-nav me-auto">
+
+                <!-- Employee menu -->
+                <li class="nav-item" sec:authorize="hasAnyRole('EMPLOYEE','MANAGER','ADMIN')">
+                    <a class="nav-link" th:href="@{/employee/dashboard}">
+                        <i class="bi bi-house"></i> My Dashboard
+                    </a>
+                </li>
+                <li class="nav-item dropdown" sec:authorize="hasAnyRole('EMPLOYEE','MANAGER','ADMIN')">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-file-earmark-text"></i> Leave
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" th:href="@{/employee/leaves/apply}">Apply Leave</a></li>
+                        <li><a class="dropdown-item" th:href="@{/employee/leaves}">My Leave History</a></li>
+                        <li><a class="dropdown-item" th:href="@{/employee/compensation/claim}">Compensation Claim</a></li>
+                    </ul>
+                </li>
+
+                <!-- Manager menu -->
+                <li class="nav-item dropdown" sec:authorize="hasAnyRole('MANAGER','ADMIN')">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-people"></i> Manager
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" th:href="@{/manager/dashboard}">Manager Dashboard</a></li>
+                        <li><a class="dropdown-item" th:href="@{/manager/leaves}">Pending Approvals</a></li>
+                        <li><a class="dropdown-item" th:href="@{/manager/subordinates/leaves}">Subordinate History</a></li>
+                        <li><a class="dropdown-item" th:href="@{/manager/compensation}">Compensation Claims</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" th:href="@{/manager/reports}">Reports</a></li>
+                    </ul>
+                </li>
+
+                <!-- Admin menu -->
+                <li class="nav-item dropdown" sec:authorize="hasRole('ADMIN')">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-gear"></i> Admin
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" th:href="@{/admin/dashboard}">Admin Dashboard</a></li>
+                        <li><a class="dropdown-item" th:href="@{/admin/employees}">Manage Employees</a></li>
+                        <li><a class="dropdown-item" th:href="@{/admin/leave-types}">Manage Leave Types</a></li>
+                        <li><a class="dropdown-item" th:href="@{/admin/holidays}">Public Holidays</a></li>
+                    </ul>
+                </li>
+
+                <!-- Movement Register — all authenticated users -->
+                <li class="nav-item" sec:authorize="isAuthenticated()">
+                    <a class="nav-link" th:href="@{/movement}">
+                        <i class="bi bi-calendar3"></i> Movement Register
+                    </a>
+                </li>
+            </ul>
+
+            <!-- Right-side: logged-in user + logout -->
+            <ul class="navbar-nav" sec:authorize="isAuthenticated()">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle"></i>
+                        <span sec:authentication="name">User</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <!-- Logout uses JS POST with CSRF token from meta tag (no inline form) -->
+                            <button type="button" class="dropdown-item text-danger"
+                                    id="logoutBtn">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </button>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<div class="container-fluid mt-3 flex-grow-1">
+    <!-- Flash messages -->
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill"></i> <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i> <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Page content injected by child templates -->
+    <div th:replace="${content}"><!-- content --></div>
+</div>
+
+<footer class="footer py-3 bg-light border-top mt-auto">
+    <div class="container text-center text-muted small">
+        &copy; 2026 ISS, NUS &mdash; Leave Application Processing System (LAPS)
+    </div>
+</footer>
+
+<script th:src="@{/webjars/bootstrap/js/bootstrap.bundle.min.js}"></script>
+<script th:src="@{/js/laps.js}"></script>
+</body>
+</html>

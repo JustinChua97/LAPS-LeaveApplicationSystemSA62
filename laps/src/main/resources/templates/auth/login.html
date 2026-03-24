@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - LAPS</title>
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}">
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap-icons/font/bootstrap-icons.css}">
+    <link rel="stylesheet" th:href="@{/css/laps.css}">
+</head>
+<body class="bg-light d-flex align-items-center justify-content-center min-vh-100">
+
+<div class="card shadow-sm" style="width: 400px;">
+    <div class="card-header bg-primary text-white text-center py-3">
+        <h4 class="mb-0"><i class="bi bi-calendar-check"></i> LAPS Login</h4>
+        <small>Leave Application Processing System</small>
+    </div>
+    <div class="card-body p-4">
+
+        <div th:if="${error}" class="alert alert-danger py-2">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <span th:text="${error}">Invalid credentials.</span>
+        </div>
+        <div th:if="${logout}" class="alert alert-info py-2">
+            <i class="bi bi-info-circle-fill"></i>
+            <span th:text="${logout}">You have been logged out.</span>
+        </div>
+
+        <form th:action="@{/login}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+            <div class="mb-3">
+                <label for="username" class="form-label fw-semibold">Username</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-person"></i></span>
+                    <input type="text" id="username" name="username"
+                           class="form-control" placeholder="Enter username"
+                           required autofocus>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label for="password" class="form-label fw-semibold">Password</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                    <input type="password" id="password" name="password"
+                           class="form-control" placeholder="Enter password"
+                           required>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-box-arrow-in-right"></i> Login
+            </button>
+        </form>
+    </div>
+    <div class="card-footer text-center text-muted small py-2">
+        &copy; 2026 ISS, NUS &mdash; All rights reserved
+    </div>
+</div>
+
+<script th:src="@{/webjars/bootstrap/js/bootstrap.bundle.min.js}"></script>
+</body>
+</html>

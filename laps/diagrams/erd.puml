@@ -1,0 +1,93 @@
+@startuml LAPS ERD
+!theme plain
+skinparam linetype ortho
+title LAPS – Entity Relationship Diagram (PostgreSQL)
+
+entity "employees" as emp {
+  * id : BIGSERIAL <<PK>>
+  --
+  * username : VARCHAR(50) <<UNIQUE>>
+  * password : VARCHAR(255)
+  * name : VARCHAR(100)
+  * email : VARCHAR(100)
+  * role : VARCHAR(30)
+  * designation : VARCHAR(30)
+  * active : BOOLEAN
+  manager_id : BIGINT <<FK>>
+}
+
+entity "leave_types" as lt {
+  * id : BIGSERIAL <<PK>>
+  --
+  * name : VARCHAR(50) <<UNIQUE>>
+  description : TEXT
+  * max_days_per_year : INT
+  * half_day_allowed : BOOLEAN
+  * active : BOOLEAN
+}
+
+entity "leave_applications" as la {
+  * id : BIGSERIAL <<PK>>
+  --
+  * employee_id : BIGINT <<FK>>
+  * leave_type_id : BIGINT <<FK>>
+  * start_date : DATE
+  * end_date : DATE
+  * duration : DECIMAL(5,1)
+  * reason : TEXT
+  work_dissemination : TEXT
+  contact_details : VARCHAR(200)
+  * status : VARCHAR(20)
+  manager_comment : TEXT
+  * applied_date : TIMESTAMP
+  updated_date : TIMESTAMP
+  * half_day : BOOLEAN
+  half_day_type : VARCHAR(2)
+}
+
+entity "leave_entitlements" as le {
+  * id : BIGSERIAL <<PK>>
+  --
+  * employee_id : BIGINT <<FK>>
+  * leave_type_id : BIGINT <<FK>>
+  * year : INT
+  * total_days : DECIMAL(5,1)
+  * used_days : DECIMAL(5,1)
+  --
+  <<UNIQUE(employee_id, leave_type_id, year)>>
+}
+
+entity "public_holidays" as ph {
+  * id : BIGSERIAL <<PK>>
+  --
+  * holiday_date : DATE <<UNIQUE>>
+  * description : VARCHAR(100)
+  * year : INT
+}
+
+entity "compensation_claims" as cc {
+  * id : BIGSERIAL <<PK>>
+  --
+  * employee_id : BIGINT <<FK>>
+  * overtime_date : DATE
+  * overtime_hours : INT
+  * compensation_days : DECIMAL(4,1)
+  * status : VARCHAR(20)
+  manager_comment : TEXT
+  * claimed_date : TIMESTAMP
+  processed_date : TIMESTAMP
+  reason : TEXT
+}
+
+' ── Relationships ──────────────────────────────────────────────
+
+emp |o--o{ emp : "reports to\n(manager_id)"
+
+emp ||--o{ la      : "employee_id"
+emp ||--o{ le      : "employee_id"
+emp ||--o{ cc      : "employee_id"
+
+lt  ||--o{ la      : "leave_type_id"
+lt  ||--o{ le      : "leave_type_id"
+
+@enduml

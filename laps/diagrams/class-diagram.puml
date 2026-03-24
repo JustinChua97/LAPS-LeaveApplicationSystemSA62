@@ -1,0 +1,242 @@
+@startuml LAPS Class Diagram
+!theme plain
+skinparam classAttributeIconSize 0
+skinparam classFontStyle Bold
+skinparam packageStyle rectangle
+title LAPS – Leave Application Processing System\nClass Diagram
+
+'─────────────────────────────────────────────────
+' ENUMERATIONS
+'─────────────────────────────────────────────────
+enum Role {
+  ROLE_EMPLOYEE
+  ROLE_MANAGER
+  ROLE_ADMIN
+}
+
+enum Designation {
+  ADMINISTRATIVE (14 days AL)
+  PROFESSIONAL (18 days AL)
+  SENIOR_PROFESSIONAL (21 days AL)
+  + getAnnualLeaveEntitlement(): int
+}
+
+enum LeaveStatus {
+  APPLIED
+  UPDATED
+  APPROVED
+  REJECTED
+  CANCELLED
+  DELETED
+}
+
+enum ClaimStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+'─────────────────────────────────────────────────
+' MODEL CLASSES
+'─────────────────────────────────────────────────
+class Employee {
+  - id: Long
+  - username: String
+  - password: String <<encoded>>
+  - name: String
+  - email: String
+  - role: Role
+  - designation: Designation
+  - active: boolean
+  --
+  + getSubordinates(): List<Employee>
+  + getLeaveApplications(): List<LeaveApplication>
+  + getLeaveEntitlements(): List<LeaveEntitlement>
+}
+
+class LeaveApplication {
+  - id: Long
+  - startDate: LocalDate
+  - endDate: LocalDate
+  - duration: double
+  - reason: String
+  - workDissemination: String
+  - contactDetails: String
+  - status: LeaveStatus
+  - managerComment: String
+  - appliedDate: LocalDateTime
+  - updatedDate: LocalDateTime
+  - halfDay: boolean
+  - halfDayType: String
+  --
+  + isEditable(): boolean
+  + isCancellable(): boolean
+  + isDeletable(): boolean
+}
+
+class LeaveType {
+  - id: Long
+  - name: String
+  - description: String
+  - maxDaysPerYear: int
+  - halfDayAllowed: boolean
+  - active: boolean
+}
+
+class LeaveEntitlement {
+  - id: Long
+  - year: int
+  - totalDays: double
+  - usedDays: double
+  --
+  + getRemainingDays(): double
+}
+
+class PublicHoliday {
+  - id: Long
+  - holidayDate: LocalDate
+  - description: String
+  - year: int
+}
+
+class CompensationClaim {
+  - id: Long
+  - overtimeDate: LocalDate
+  - overtimeHours: int
+  - compensationDays: double
+  - status: ClaimStatus
+  - managerComment: String
+  - claimedDate: LocalDateTime
+  - reason: String
+}
+
+'─────────────────────────────────────────────────
+' SERVICE CLASSES
+'─────────────────────────────────────────────────
+class LeaveService {
+  + applyLeave(application, employee): LeaveApplication
+  + updateLeave(id, updated, employee): LeaveApplication
+  + deleteLeave(id, employee): void
+  + cancelLeave(id, employee): void
+  + approveLeave(id, comment, manager): void
+  + rejectLeave(id, comment, manager): void
+  + getMyLeaveHistory(employee): List<LeaveApplication>
+  + getPendingApplicationsForManager(mgr): List<LeaveApplication>
+  + claimCompensation(claim, employee): CompensationClaim
+  + approveCompensationClaim(id, comment, mgr): void
+}
+
+class EmployeeService {
+  + findByUsername(username): Optional<Employee>
+  + createEmployee(employee): Employee
+  + updateEmployee(employee): Employee
+  + deactivateEmployee(id): void
+  + getEntitlements(employee, year): List<LeaveEntitlement>
+  + updateEntitlement(id, totalDays): void
+}
+
+class AdminService {
+  + getAllLeaveTypes(): List<LeaveType>
+  + saveLeaveType(lt): LeaveType
+  + getHolidaysByYear(year): List<PublicHoliday>
+  + saveHoliday(holiday): PublicHoliday
+}
+
+class EmailService {
+  + sendLeaveApplicationNotification(la): void
+  + sendLeaveApprovalNotification(la): void
+  + sendLeaveRejectionNotification(la): void
+}
+
+class LeaveCalculator {
+  + calculateAnnualLeaveDays(start, end, holidays): double
+  + calculateMedicalLeaveDays(start, end): double
+  + isWorkingDay(date, holidays): boolean
+  + calculateCompensationDays(hours): double
+}
+
+'─────────────────────────────────────────────────
+' CONTROLLER CLASSES
+'─────────────────────────────────────────────────
+class EmployeeController {
+  + dashboard(): String
+  + applyLeaveForm(): String
+  + applyLeave(): String
+  + leaveHistory(): String
+  + viewLeave(): String
+  + editLeaveForm(): String
+  + updateLeave(): String
+  + deleteLeave(): String
+  + cancelLeave(): String
+}
+
+class ManagerController {
+  + dashboard(): String
+  + viewPendingLeaves(): String
+  + viewLeaveDetail(): String
+  + approveLeave(): String
+  + rejectLeave(): String
+  + subordinateLeaveHistory(): String
+  + leaveReport(): String
+  + exportLeaveReport(): ResponseEntity
+}
+
+class AdminController {
+  + listEmployees(): String
+  + createEmployee(): String
+  + updateEmployee(): String
+  + manageLeaveTypes(): String
+  + manageHolidays(): String
+  + updateEntitlement(): String
+}
+
+class LeaveRestController <<REST>> {
+  + getMyLeaves(): ResponseEntity
+  + getLeave(id): ResponseEntity
+  + getMyEntitlements(): ResponseEntity
+  + getMovement(year, month): ResponseEntity
+  + getLeaveTypes(): ResponseEntity
+}
+
+'─────────────────────────────────────────────────
+' RELATIONSHIPS
+'─────────────────────────────────────────────────
+
+' Self-referencing manager hierarchy
+Employee "1" o-- "0..*" Employee : manager >
+
+' Employee to leave applications
+Employee "1" *-- "0..*" LeaveApplication : applies >
+Employee "1" *-- "0..*" LeaveEntitlement : has >
+Employee "1" *-- "0..*" CompensationClaim : claims >
+
+' Leave application to leave type
+LeaveApplication "0..*" --> "1" LeaveType : type >
+
+' Leave entitlement to leave type
+LeaveEntitlement "0..*" --> "1" LeaveType : type >
+
+' Enumerations
+Employee --> Role
+Employee --> Designation
+LeaveApplication --> LeaveStatus
+CompensationClaim --> ClaimStatus
+
+' Service dependencies
+LeaveService ..> LeaveApplication : manages
+LeaveService ..> CompensationClaim : manages
+LeaveService ..> LeaveCalculator : uses
+LeaveService ..> EmailService : uses
+EmployeeService ..> Employee : manages
+AdminService ..> LeaveType : manages
+AdminService ..> PublicHoliday : manages
+
+' Controller dependencies
+EmployeeController ..> LeaveService : uses
+EmployeeController ..> EmployeeService : uses
+ManagerController ..> LeaveService : uses
+AdminController ..> EmployeeService : uses
+AdminController ..> AdminService : uses
+LeaveRestController ..> LeaveService : uses
+
+@enduml
