@@ -71,6 +71,7 @@ class LeaveServiceTest {
     @DisplayName("Apply leave succeeds when sufficient entitlement exists")
     void applyLeave_withSufficientBalance_savesApplication() {
         LeaveEntitlement entitlement = new LeaveEntitlement(employee, annualLeaveType, 2026, 14);
+        when(leaveTypeRepo.findById(1L)).thenReturn(Optional.of(annualLeaveType));
         when(publicHolidayRepo.findByYear(anyInt())).thenReturn(List.of());
         when(leaveEntitlementRepo.findByEmployeeAndLeaveTypeAndYear(any(), any(), anyInt()))
                 .thenReturn(Optional.of(entitlement));
@@ -94,6 +95,7 @@ class LeaveServiceTest {
     void applyLeave_endBeforeStart_throwsException() {
         sampleApplication.setStartDate(LocalDate.of(2026, 4, 10));
         sampleApplication.setEndDate(LocalDate.of(2026, 4, 7));
+        when(leaveTypeRepo.findById(1L)).thenReturn(Optional.of(annualLeaveType));
         when(publicHolidayRepo.findByYear(anyInt())).thenReturn(List.of());
 
         assertThatThrownBy(() -> leaveService.applyLeave(sampleApplication, employee))
