@@ -67,21 +67,6 @@ jobs:
         run: pip install semgrep
 
       - name: Run Semgrep SAST scan
-        run: >
-          semgrep scan
-          --config p/java
-          --config p/owasp-top-ten
-          --config p/secrets
-          --exclude "laps/src/test/**"
-          --exclude "laps/target/**"
-          --sarif
-          --output semgrep.sarif
+        run: semgrep ci
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
-
-      - name: Upload SARIF as artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: semgrep-sarif
-          path: semgrep.sarif
