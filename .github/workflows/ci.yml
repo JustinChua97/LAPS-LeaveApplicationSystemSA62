@@ -1,4 +1,4 @@
-name: CI - Build and Test
+name: CI - Build, Test and Security Scan
 
 on:
   pull_request:
@@ -53,3 +53,31 @@ jobs:
         with:
           name: test-results
           path: laps/target/surefire-reports/
+
+  semgrep-sast:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Semgrep SAST scan
+        run: >
+          semgrep scan
+          --config p/java
+          --config p/owasp-top-ten
+          --config p/secrets
+          --exclude "laps/src/test/**"
+          --exclude "laps/target/**"
+          --sarif
+          --output semgrep.sarif
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+      - name: Upload SARIF results to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
