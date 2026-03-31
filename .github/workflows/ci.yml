@@ -54,6 +54,16 @@ jobs:
           name: test-results
           path: laps/target/surefire-reports/
 
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: laps-jar
+          path: |
+            laps/target/laps-*.jar
+            !laps/target/*.jar.original
+          if-no-files-found: error
+          retention-days: 5
+
   semgrep-sast:
     runs-on: ubuntu-latest
     permissions:
