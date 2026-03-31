@@ -38,7 +38,7 @@ jobs:
         working-directory: laps
         run: mvn -B verify -Dspring.profiles.active=ci
         env:
-          DB_URL: jdbc:postgresql://localhost:5432/lapsdb
+          DB_URL: ${{ secrets.DB_URL }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           MAIL_HOST: ${{ secrets.MAIL_HOST }}
