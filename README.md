@@ -57,9 +57,12 @@ All accounts use the password set in `SEED_USER_PASSWORD`.
 
 ## CI/CD (GitHub Actions)
 
-The pipeline runs on every push to `main` or `feature-*` branches and on pull requests to `main`.
+Two workflows run automatically:
 
-It spins up a PostgreSQL 14 service container, builds the app, and runs all tests against a real database.
+| Workflow | Trigger | What it does |
+|---|---|---|
+| **CI** (`ci.yml`) | Pull request to `main`, manual | Builds, runs all tests against a PostgreSQL container, runs Semgrep SAST scan |
+| **CD** (`deploy.yml`) | Push to `main`, manual | Builds JAR, deploys to AWS EC2 via SSH, restarts the `laps` systemd service, health-checks the app |
 
 ### Required GitHub Secrets
 
@@ -67,7 +70,7 @@ Go to **Settings → Secrets and variables → Actions** and add:
 
 | Secret | Description |
 |--------|-------------|
-| `DB_URL` | PostgreSQL connection URL (e.g. `jdbc:postgresql://localhost:5432/lapsdb`) |
+| `DB_URL` | PostgreSQL JDBC URL (e.g. `jdbc:postgresql://localhost:5432/lapsdb`) |
 | `DB_USERNAME` | Database username |
 | `DB_PASSWORD` | Database password |
 | `MAIL_HOST` | SMTP host |
@@ -75,6 +78,23 @@ Go to **Settings → Secrets and variables → Actions** and add:
 | `MAIL_USERNAME` | SMTP username |
 | `MAIL_PASSWORD` | SMTP password |
 | `SEED_USER_PASSWORD` | Password assigned to all seeded test accounts |
+| `EC2_HOST` | Public IP or DNS of the EC2 instance |
+| `EC2_USER` | SSH user on EC2 (e.g. `ec2-user`) |
+| `EC2_SSH_PRIVATE_KEY` | Private key (PEM) for SSH access to EC2 |
+| `EC2_KNOWN_HOST` | EC2 host public key line for `known_hosts` (run `ssh-keyscan -H <EC2_HOST>` once to get it) |
+| `SEMGREP_APP_TOKEN` | Semgrep API token for SAST scanning |
+
+### EC2 Setup (automated by CD workflow)
+
+The CD workflow handles first-time EC2 provisioning automatically:
+- Creates `/opt/laps/` and writes the app environment file (`/opt/laps/.env`)
+- Installs PostgreSQL 15 if not present, configures `md5` authentication, creates the `lapsdb` database and app user
+- Creates and enables the `laps` systemd service with `EnvironmentFile=/opt/laps/.env`
+- Deploys the JAR, restarts the service, and waits up to 60s for the health check at `http://localhost:8080/login`
+
+**EC2 prerequisites (manual, one-time):**
+- Amazon Linux 2023 instance with Java 17 installed (`sudo dnf install -y java-17-amazon-corretto`)
+- Port 22 open inbound (SSH) and port 8080 open inbound (app) in the security group
 
 ### Running Tests Locally Against PostgreSQL
 ```bash
