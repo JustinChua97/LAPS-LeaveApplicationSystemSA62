@@ -68,6 +68,7 @@ jobs:
             echo "ERROR: Expected exactly one JAR to deploy, found $count: $jar_file"
             exit 1
           fi
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "mkdir -p /opt/laps"
           scp "$jar_file" ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/laps/laps-new.jar
 
       - name: Restart application on EC2
