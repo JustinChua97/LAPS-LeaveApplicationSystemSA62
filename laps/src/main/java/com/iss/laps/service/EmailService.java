@@ -19,8 +19,8 @@ public class EmailService {
     @Value("${spring.mail.username:noreply@laps.iss.edu.sg}")
     private String fromEmail;
 
-    @Value("${server.port:8080}")
-    private int serverPort;
+    @Value("${app.base-url:localhost}")
+    private String appHost;
 
     @Async
     public void sendLeaveApplicationNotification(LeaveApplication application) {
@@ -31,18 +31,18 @@ public class EmailService {
             String subject = "Leave Application from " + application.getEmployee().getName();
             String body = String.format(
                     "Dear %s,\n\n%s has applied for %s leave from %s to %s.\n\nReason: %s\n\n" +
-                    "Please login to LAPS to approve or reject: http://localhost:%d/manager/leaves\n\nRegards,\nLAPS System",
+                    "Please login to LAPS to approve or reject: http://%s:8080/manager/leaves\n\nRegards,\nLAPS System",
                     application.getEmployee().getManager().getName(),
                     application.getEmployee().getName(),
                     application.getLeaveType().getName(),
                     application.getStartDate(),
                     application.getEndDate(),
                     application.getReason(),
-                    serverPort
+                    appHost
             );
             sendEmail(managerEmail, subject, body);
         } catch (Exception e) {
-            log.warn("Failed to send leave application notification email: {}", e.getMessage());
+            log.warn("Failed to send leave application notification email", e);
         }
     }
 
@@ -53,17 +53,17 @@ public class EmailService {
             String subject = "Your Leave Application has been Approved";
             String body = String.format(
                     "Dear %s,\n\nYour %s leave application from %s to %s has been APPROVED.\n\n" +
-                    "Comment: %s\n\nPlease login to view details: http://localhost:%d/employee/leaves\n\nRegards,\nLAPS System",
+                    "Comment: %s\n\nPlease login to view details: http://%s:8080/employee/leaves\n\nRegards,\nLAPS System",
                     application.getEmployee().getName(),
                     application.getLeaveType().getName(),
                     application.getStartDate(),
                     application.getEndDate(),
                     application.getManagerComment() != null ? application.getManagerComment() : "N/A",
-                    serverPort
+                    appHost
             );
             sendEmail(employeeEmail, subject, body);
         } catch (Exception e) {
-            log.warn("Failed to send approval notification email: {}", e.getMessage());
+            log.warn("Failed to send approval notification email", e);
         }
     }
 
@@ -74,17 +74,17 @@ public class EmailService {
             String subject = "Your Leave Application has been Rejected";
             String body = String.format(
                     "Dear %s,\n\nYour %s leave application from %s to %s has been REJECTED.\n\n" +
-                    "Reason: %s\n\nPlease login to view details: http://localhost:%d/employee/leaves\n\nRegards,\nLAPS System",
+                    "Reason: %s\n\nPlease login to view details: http://%s:8080/employee/leaves\n\nRegards,\nLAPS System",
                     application.getEmployee().getName(),
                     application.getLeaveType().getName(),
                     application.getStartDate(),
                     application.getEndDate(),
                     application.getManagerComment(),
-                    serverPort
+                    appHost
             );
             sendEmail(employeeEmail, subject, body);
         } catch (Exception e) {
-            log.warn("Failed to send rejection notification email: {}", e.getMessage());
+            log.warn("Failed to send rejection notification email", e);
         }
     }
 
