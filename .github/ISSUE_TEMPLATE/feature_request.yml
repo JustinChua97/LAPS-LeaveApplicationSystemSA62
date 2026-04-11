@@ -1,0 +1,150 @@
+name: Feature Request
+description: >
+  Propose a new feature or change to LAPS.
+  All fields are required before this issue can be moved to the sprint backlog.
+title: "[FEAT] <short description>"
+labels: ["needs-threat-review", "backlog-candidate"]
+body:
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Before You Submit
+        Every field in this form is required. Issues missing security fields will be labelled
+        `blocked-missing-security-analysis` and will **not** enter the sprint backlog.
+        Please fill in all sections thoroughly — they become the contract for the implementation plan.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One paragraph describing the change and why it is needed.
+      placeholder: "As a [ROLE_EMPLOYEE | ROLE_MANAGER | ROLE_ADMIN], I need [capability] so that [outcome]."
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: |
+        List testable, binary pass/fail statements. Use GIVEN / WHEN / THEN format or a numbered list.
+        These become the contract for the implementation plan and test cases.
+      placeholder: |
+        1. GIVEN an employee submits a leave request for a past date,
+           WHEN the form is submitted,
+           THEN a validation error is returned with message "Start date must not be in the past".
+        2. GIVEN an employee with 0 annual leave days remaining,
+           WHEN they apply for 1 day of annual leave,
+           THEN the system rejects the request with "Insufficient leave balance".
+    validations:
+      required: true
+
+  - type: textarea
+    id: security_considerations
+    attributes:
+      label: Security Considerations
+      description: |
+        Describe the security properties this feature must preserve or introduce.
+        Reference OWASP ASVS 4.0 controls where applicable.
+      placeholder: |
+        Authentication (ASVS V2.1): Does this endpoint require authentication? Which roles?
+        Authorization (ASVS V4.1): Map to @PreAuthorize or SecurityConfig. Which roles are permitted?
+        Input Validation (ASVS V5.1): What fields are accepted? What type/length/format constraints apply?
+        Data Exposure (ASVS V8.2): What data is returned? Is it the minimum necessary? Any PII?
+        Error Disclosure (ASVS V7.4): Do error messages reveal internal state or stack traces?
+        API Security (ASVS V13.1): If this touches /api/v1, does it require auth and validate input?
+        Cryptography (ASVS V6.2): Are passwords/tokens handled with BCrypt? No custom crypto?
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: trust_boundaries
+    attributes:
+      label: Trust Boundaries Affected
+      description: |
+        Check every boundary this feature crosses. Each checked boundary **requires** explicit
+        validation controls described in "Input / Output Contracts" below.
+        Leaving all boxes unchecked will trigger the `blocked-missing-security-analysis` label.
+      options:
+        - label: "Employee → Application (ROLE_EMPLOYEE submitting or viewing own data)"
+        - label: "Manager → Application (ROLE_MANAGER approving/rejecting subordinate data)"
+        - label: "Admin → Application (ROLE_ADMIN managing system configuration)"
+        - label: "Application → Database (JPA queries, parameter binding)"
+        - label: "Application → External Email (SMTP via EmailService)"
+        - label: "Public / Unauthenticated → Application (login page, public endpoints)"
+        - label: "REST API consumer → /api/v1 (LeaveRestController)"
+
+  - type: textarea
+    id: io_contracts
+    attributes:
+      label: Input / Output Contracts
+      description: |
+        For every trust boundary checked above, describe:
+        - **Inputs**: field names, types, max lengths, allowed character sets, required vs optional
+        - **Outputs**: what data is returned and to which role
+        - **Validation rules**: server-side constraints (client-side-only validation is NOT sufficient)
+      placeholder: |
+        INPUT — POST /employee/leaves/apply:
+          - leaveType.id:  Long, required, must exist in leave_types table
+          - startDate:     ISO-8601 date, required, must not be in the past
+          - endDate:       ISO-8601 date, required, >= startDate
+          - reason:        String, required, max 500 chars, no HTML tags
+          - halfDay:       Boolean, optional, only valid for Compensation leave
+
+        OUTPUT — redirect to /employee/leaves on success:
+          - Flash message string only; no raw entity data echoed back
+
+        VALIDATION RULES (server-side, LeaveService.validateLeaveApplication()):
+          - startDate not in the past
+          - endDate >= startDate
+          - no overlap with existing APPROVED leave
+          - entitlement.remaining_days >= calculated duration
+    validations:
+      required: true
+
+  - type: textarea
+    id: testability_criteria
+    attributes:
+      label: Testability Criteria
+      description: |
+        How will this feature be tested? List specific test classes and method names with measurable outcomes.
+        Include unit tests, MockMvc integration tests, and security negative tests.
+      placeholder: |
+        Unit tests (LeaveServiceTest):
+          - test_applyLeave_pastStartDate_throwsLeaveApplicationException()
+          - test_applyLeave_insufficientBalance_throwsLeaveApplicationException()
+          - test_applyLeave_overlappingApprovedLeave_throwsLeaveApplicationException()
+
+        Integration tests (MockMvc, @SpringBootTest):
+          - POST /employee/leaves/apply as ROLE_EMPLOYEE with valid data → 302 redirect to /employee/leaves
+          - POST /employee/leaves/apply as unauthenticated → 302 redirect to /login
+          - POST /employee/leaves/apply without CSRF token → 403 Forbidden
+
+        Security negative tests:
+          - POST /employee/leaves/apply as ROLE_MANAGER → confirm access is permitted or rejected per spec
+          - Submit leaveType.id that belongs to another employee's entitlement → expect rejection
+          - Inject HTML in reason field → confirm HTML is escaped in any response that echoes it back
+    validations:
+      required: true
+
+  - type: textarea
+    id: data_flow
+    attributes:
+      label: Data Flow (text diagram)
+      description: |
+        Sketch the request/response path through LAPS layers. Include every component that touches
+        the data. Use ASCII art or plain text arrows.
+      placeholder: |
+        Browser
+          → POST /employee/leaves/apply  (CSRF token + session cookie)
+          → EmployeeController.applyLeave()
+              → @Valid @ModelAttribute LeaveApplication  [Bean Validation boundary]
+              → BindingResult check → redirect with error if invalid
+              → LeaveService.applyLeave()
+                  → validateLeaveApplication()  [business rule boundary]
+                  → leaveAppRepo.save()          [JPA parameterized query → PostgreSQL]
+                  → emailService.sendLeaveApplicationNotification()  [@Async SMTP]
+          ← redirect:/employee/leaves  (flash message only)
+    validations:
+      required: true
