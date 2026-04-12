@@ -1,5 +1,6 @@
 package com.iss.laps;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iss.laps.config.JwtConfig;
 import com.iss.laps.security.JwtService;
 import io.jsonwebtoken.Jwts;
@@ -7,6 +8,7 @@ import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
@@ -16,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.Map;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -29,9 +32,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * alg:none, wrong secret, forged elevated role, CSRF still enforced on web chain.
  *
  * Uses the 'test' profile (H2 in-memory) — no external DB required, no secrets needed.
- * Seed accounts are created by DataInitializer using app.seed.password=test-seed-password
- * (hardcoded in application-test.properties; SEED_USER_PASSWORD env var does not relax-bind
- * to app.seed.password so CI cannot override the test value).
+ * Seed accounts are created by DataInitializer using the resolved app.seed.password
+ * for the active Spring profile, so these tests authenticate with the same value.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -40,12 +42,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class JwtAuthControllerTest {
 
     @Autowired MockMvc mockMvc;
+    @Autowired ObjectMapper objectMapper;
     @Autowired JwtService jwtService;
     @Autowired JwtConfig jwtConfig;
+    @Value("${app.seed.password}")
+    String seedPassword;
 
     private static final String TOKEN_URL = "/api/v1/auth/token";
     private static final String LEAVES_URL = "/api/v1/leaves/my";
-    private static final String SEED_PASSWORD = "test-seed-password";
 
     // -----------------------------------------------------------------------
     // AC1 — valid credentials → 200 + JWT body with correct structure
@@ -56,7 +60,7 @@ class JwtAuthControllerTest {
     void validCredentials_return200WithJwtBody() throws Exception {
         mockMvc.perform(post(TOKEN_URL)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"username\":\"emp.tan\",\"password\":\"" + SEED_PASSWORD + "\"}"))
+                .content(authJson("emp.tan", seedPassword)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isString())
                 .andExpect(jsonPath("$.tokenType").value("Bearer"))
@@ -70,7 +74,7 @@ class JwtAuthControllerTest {
     @Test
     @DisplayName("AC2: valid Bearer token allows GET /api/v1/leaves/my")
     void validToken_allowsGetMyLeaves() throws Exception {
-        String token = obtainToken("emp.tan", SEED_PASSWORD);
+        String token = obtainToken("emp.tan", seedPassword);
 
         mockMvc.perform(get(LEAVES_URL)
                 .header("Authorization", "Bearer " + token))
@@ -103,7 +107,7 @@ class JwtAuthControllerTest {
     @Test
     @DisplayName("AC3: tampered token returns 401")
     void tamperedToken_returns401() throws Exception {
-        String token = obtainToken("emp.tan", SEED_PASSWORD);
+        String token = obtainToken("emp.tan", seedPassword);
         String tampered = token.substring(0, token.length() - 1)
                 + (token.endsWith("a") ? "b" : "a");
 
@@ -131,7 +135,7 @@ class JwtAuthControllerTest {
     @Test
     @DisplayName("AC5: ROLE_EMPLOYEE token on /api/v1/leaves/my returns only own leaves")
     void employeeToken_myLeaves_returnsOwnLeavesOnly() throws Exception {
-        String token = obtainToken("emp.tan", SEED_PASSWORD);
+        String token = obtainToken("emp.tan", seedPassword);
 
         mockMvc.perform(get(LEAVES_URL)
                 .header("Authorization", "Bearer " + token))
@@ -150,7 +154,7 @@ class JwtAuthControllerTest {
     void wrongPassword_returns401Generic() throws Exception {
         mockMvc.perform(post(TOKEN_URL)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"username\":\"emp.tan\",\"password\":\"wrong-password\"}"))
+                .content(authJson("emp.tan", "wrong-password")))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("Unauthorized"))
                 .andExpect(jsonPath("$.message").value("Authentication failed"))
@@ -163,7 +167,7 @@ class JwtAuthControllerTest {
     void unknownUsername_returnsSame401AsWrongPassword() throws Exception {
         mockMvc.perform(post(TOKEN_URL)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"username\":\"ghost.user\",\"password\":\"irrelevant\"}"))
+                .content(authJson("ghost.user", "irrelevant")))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("Unauthorized"))
                 .andExpect(jsonPath("$.message").value("Authentication failed"));
@@ -179,7 +183,7 @@ class JwtAuthControllerTest {
         // No .with(csrf()) — verifying CSRF is not required on the API chain
         mockMvc.perform(post(TOKEN_URL)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"username\":\"emp.tan\",\"password\":\"" + SEED_PASSWORD + "\"}"))
+                .content(authJson("emp.tan", seedPassword)))
                 .andExpect(status().isOk());
     }
 
@@ -243,7 +247,7 @@ class JwtAuthControllerTest {
     private String obtainToken(String username, String password) throws Exception {
         String body = mockMvc.perform(post(TOKEN_URL)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}"))
+                .content(authJson(username, password)))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
@@ -251,5 +255,12 @@ class JwtAuthControllerTest {
         int start = body.indexOf("\"accessToken\":\"") + 15;
         int end = body.indexOf("\"", start);
         return body.substring(start, end);
+    }
+
+    private String authJson(String username, String password) throws Exception {
+        return objectMapper.writeValueAsString(Map.of(
+                "username", username,
+                "password", password
+        ));
     }
 }
