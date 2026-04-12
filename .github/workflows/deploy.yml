@@ -60,7 +60,11 @@ jobs:
           ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
 
       - name: Add EC2 host to known_hosts
-        run: echo "${{ secrets.EC2_KNOWN_HOST }}" >> ~/.ssh/known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.EC2_KNOWN_HOST }}" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
 
       - name: Copy JAR to EC2
         run: |
