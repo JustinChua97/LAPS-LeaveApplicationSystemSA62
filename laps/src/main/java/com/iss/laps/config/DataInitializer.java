@@ -32,7 +32,7 @@ public class DataInitializer implements ApplicationRunner {
     private final LeaveApplicationRepository leaveApplicationRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Value("${seed.user.password}")
+    @Value("${app.seed.password}")
     private String seedPassword;
 
     @Override
