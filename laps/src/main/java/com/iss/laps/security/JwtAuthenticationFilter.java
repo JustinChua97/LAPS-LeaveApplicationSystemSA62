@@ -47,8 +47,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     @jakarta.annotation.Nonnull HttpServletResponse response,
                                     @jakarta.annotation.Nonnull FilterChain filterChain) throws ServletException, IOException {
 
-        // Skip the token-issuance endpoint itself
-        if (TOKEN_ENDPOINT.equals(request.getServletPath())) {
+        // Skip the token-issuance endpoint itself.
+        if (isTokenEndpoint(request)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -96,5 +96,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         objectMapper.writeValue(response.getWriter(),
                 Map.of("error", "Unauthorized", "message", "Authentication failed"));
+    }
+
+    private boolean isTokenEndpoint(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        if (contextPath != null && !contextPath.isBlank() && path.startsWith(contextPath)) {
+            path = path.substring(contextPath.length());
+        }
+        return TOKEN_ENDPOINT.equals(path);
     }
 }

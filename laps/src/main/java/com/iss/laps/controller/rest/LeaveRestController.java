@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,28 +28,32 @@ public class LeaveRestController {
      * GET /api/v1/leaves/my - Get current user's leave history
      */
     @GetMapping("/leaves/my")
-    public ResponseEntity<List<LeaveApplication>> getMyLeaves() {
+    public ResponseEntity<List<Map<String, Object>>> getMyLeaves() {
         var employee = securityUtils.getCurrentEmployee();
-        return ResponseEntity.ok(leaveService.getMyLeaveHistory(employee));
+        return ResponseEntity.ok(leaveService.getMyLeaveHistory(employee).stream()
+                .map(this::toLeaveResponse)
+                .toList());
     }
 
     /**
      * GET /api/v1/leaves/{id} - Get specific leave application
      */
     @GetMapping("/leaves/{id}")
-    public ResponseEntity<LeaveApplication> getLeave(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> getLeave(@PathVariable Long id) {
         var employee = securityUtils.getCurrentEmployee();
-        return ResponseEntity.ok(leaveService.findByIdAndEmployee(id, employee));
+        return ResponseEntity.ok(toLeaveResponse(leaveService.findByIdAndEmployee(id, employee)));
     }
 
     /**
      * GET /api/v1/leaves/entitlements - Get current user's entitlements
      */
     @GetMapping("/leaves/entitlements")
-    public ResponseEntity<List<LeaveEntitlement>> getMyEntitlements() {
+    public ResponseEntity<List<Map<String, Object>>> getMyEntitlements() {
         var employee = securityUtils.getCurrentEmployee();
         int year = LocalDate.now().getYear();
-        return ResponseEntity.ok(employeeService.getEntitlements(employee, year));
+        return ResponseEntity.ok(employeeService.getEntitlements(employee, year).stream()
+                .map(this::toEntitlementResponse)
+                .toList());
     }
 
     /**
@@ -95,5 +100,39 @@ public class LeaveRestController {
             map.put("halfDayAllowed", lt.isHalfDayAllowed());
             return map;
         }).toList());
+    }
+
+    private Map<String, Object> toLeaveResponse(LeaveApplication leaveApplication) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", leaveApplication.getId());
+        map.put("leaveTypeId", leaveApplication.getLeaveType().getId());
+        map.put("leaveType", leaveApplication.getLeaveType().getName());
+        map.put("startDate", leaveApplication.getStartDate().toString());
+        map.put("endDate", leaveApplication.getEndDate().toString());
+        map.put("duration", leaveApplication.getDuration());
+        map.put("reason", leaveApplication.getReason());
+        map.put("workDissemination", leaveApplication.getWorkDissemination());
+        map.put("contactDetails", leaveApplication.getContactDetails());
+        map.put("status", leaveApplication.getStatus().name());
+        map.put("managerComment", leaveApplication.getManagerComment());
+        map.put("appliedDate", leaveApplication.getAppliedDate().toString());
+        map.put("updatedDate", leaveApplication.getUpdatedDate() == null
+                ? null
+                : leaveApplication.getUpdatedDate().toString());
+        map.put("halfDay", leaveApplication.isHalfDay());
+        map.put("halfDayType", leaveApplication.getHalfDayType());
+        return map;
+    }
+
+    private Map<String, Object> toEntitlementResponse(LeaveEntitlement entitlement) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", entitlement.getId());
+        map.put("leaveTypeId", entitlement.getLeaveType().getId());
+        map.put("leaveType", entitlement.getLeaveType().getName());
+        map.put("year", entitlement.getYear());
+        map.put("totalDays", entitlement.getTotalDays());
+        map.put("usedDays", entitlement.getUsedDays());
+        map.put("remainingDays", entitlement.getRemainingDays());
+        return map;
     }
 }
