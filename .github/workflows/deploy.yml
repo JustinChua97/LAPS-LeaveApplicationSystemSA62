@@ -147,6 +147,14 @@ jobs:
             sudo systemctl enable laps
           REMOTE_SCRIPT
 
+      - name: Configure nginx HTTPS on EC2
+        run: |
+          scp scripts/setup-nginx-https.sh \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/setup-nginx-https.sh
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+            "bash /tmp/setup-nginx-https.sh '${{ secrets.EC2_HOST }}' \
+             && rm /tmp/setup-nginx-https.sh"
+
       - name: Restart application on EC2
         run: |
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'REMOTE_SCRIPT'
@@ -170,4 +178,5 @@ jobs:
 
       - name: Print deployment summary
         run: |
-          echo "Deployed to http://${{ secrets.EC2_HOST }}:8080"
+          echo "Deployed to https://${{ secrets.EC2_HOST }}"
+          echo "(Self-signed certificate — browser will show a security warning; click Advanced -> Proceed)"

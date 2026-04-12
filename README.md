@@ -101,12 +101,51 @@ The CD workflow handles first-time EC2 provisioning automatically on each deploy
 
 **EC2 prerequisites (manual, one-time):**
 - Amazon Linux 2023 instance with Java 17 installed: `sudo dnf install -y java-17-amazon-corretto`
-- Security group inbound rules: port 22 (SSH) and port 8080 (app)
+- Security group inbound rules: see HTTPS section below
 - Get `EC2_KNOWN_HOST` secret:
   ```bash
   ssh-keyscan ec2-32-195-62-44.compute-1.amazonaws.com
   ```
   Copy **both the ecdsa and ed25519 key lines** (without the `# comment` lines) and paste into the GitHub secret
+
+### HTTPS Setup (issue #9)
+
+The CD workflow automatically configures nginx as a TLS-terminating reverse proxy on each deploy using a self-signed certificate. No additional secrets are required — `EC2_HOST` is already used.
+
+**EC2 Security Group rules (update in AWS Console after first HTTPS deploy):**
+
+| Type | Port | Source | Purpose |
+| --- | --- | --- | --- |
+| SSH | 22 | Your IP | Admin access |
+| HTTP | 80 | 0.0.0.0/0 | nginx → 301 redirect to HTTPS |
+| HTTPS | 443 | 0.0.0.0/0 | nginx TLS endpoint |
+| Custom TCP | 8080 | **Remove or restrict to 127.0.0.1/32** | Spring Boot must NOT be publicly reachable |
+
+> **Important:** Removing public access to port 8080 is a required security step (ASVS V1.9.2). If port 8080 remains open, TLS provides no protection — attackers can bypass nginx entirely.
+
+**Browser self-signed certificate warning:**
+Because AWS Academy EC2 instances use a dynamic public DNS that changes between lab sessions, a CA-signed certificate (Let's Encrypt) is not practical. The deploy generates a fresh self-signed certificate on each run. Browsers will display a "Your connection is not private" warning — this is expected. Click **Advanced → Proceed** to access the application. Traffic is fully encrypted; only the CA-issued trust chain is absent.
+
+**Verify HTTPS after deploy:**
+```bash
+# HTTPS responds with 200 and HSTS header
+curl -k -I https://<EC2_HOST>/login
+
+# HTTP redirects to HTTPS (301)
+curl -I http://<EC2_HOST>
+
+# Session cookie has Secure and HttpOnly flags
+curl -k -c /dev/null -I https://<EC2_HOST>/login | grep Set-Cookie
+
+# Confirm TLS 1.2+ only (requires nmap)
+nmap --script ssl-enum-ciphers -p 443 <EC2_HOST>
+```
+
+**Certificate details:**
+
+- Location: `/opt/laps/ssl/server.crt` (cert) and `/opt/laps/ssl/server.key` (private key)
+- Private key permissions: `chmod 600` (root-only read, ASVS V6.4.1)
+- Validity: 365 days from each deploy (regenerated on every deploy)
 
 ### Running Tests Locally Against PostgreSQL
 ```bash
