@@ -85,6 +85,7 @@ jobs:
           MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}
           MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}
           SEED_USER_PASSWORD=${{ secrets.SEED_USER_PASSWORD }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
           EOF
           sed -i 's/^[[:space:]]*//' /tmp/laps.env
           scp /tmp/laps.env ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/laps.env
