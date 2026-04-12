@@ -78,10 +78,10 @@ Go to **Settings → Secrets and variables → Actions** and add:
 | `MAIL_USERNAME` | SMTP username |
 | `MAIL_PASSWORD` | SMTP password |
 | `SEED_USER_PASSWORD` | Password assigned to all seeded test accounts |
-| `EC2_HOST` | Public IP or DNS of the EC2 instance |
+| `EC2_HOST` | **Public DNS** of the EC2 instance (e.g. `ec2-32-195-62-44.compute-1.amazonaws.com`) — use DNS, not IP address |
 | `EC2_USER` | SSH user on EC2 (e.g. `ec2-user`) |
 | `EC2_SSH_PRIVATE_KEY` | Private key (PEM) for SSH access to EC2 |
-| `EC2_KNOWN_HOST` | EC2 host public key line for `known_hosts` (run `ssh-keyscan -H <EC2_HOST>` once to get it) |
+| `EC2_KNOWN_HOST` | EC2 host public key for `known_hosts` — run `ssh-keyscan <EC2_HOST>` (without `-H`) to get both ecdsa and ed25519 keys, paste both lines |
 | `SEMGREP_APP_TOKEN` | Semgrep API token for SAST scanning |
 
 ### CD Deploy Behaviour
@@ -102,7 +102,11 @@ The CD workflow handles first-time EC2 provisioning automatically on each deploy
 **EC2 prerequisites (manual, one-time):**
 - Amazon Linux 2023 instance with Java 17 installed: `sudo dnf install -y java-17-amazon-corretto`
 - Security group inbound rules: port 22 (SSH) and port 8080 (app)
-- Add `EC2_KNOWN_HOST` secret: run `ssh-keyscan -H <EC2_HOST>` once and store the output line
+- Get `EC2_KNOWN_HOST` secret:
+  ```bash
+  ssh-keyscan ec2-32-195-62-44.compute-1.amazonaws.com
+  ```
+  Copy **both the ecdsa and ed25519 key lines** (without the `# comment` lines) and paste into the GitHub secret
 
 ### Running Tests Locally Against PostgreSQL
 ```bash
