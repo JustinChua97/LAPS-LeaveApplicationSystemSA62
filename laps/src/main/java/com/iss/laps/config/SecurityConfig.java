@@ -1,17 +1,23 @@
 package com.iss.laps.config;
 
-import com.iss.laps.service.CustomUserDetailsService;
+import com.iss.laps.security.JwtAuthenticationFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @Configuration
@@ -20,7 +26,7 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final CustomUserDetailsService userDetailsService;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -32,8 +38,53 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+    /**
+     * API filter chain — applies to all /api/** requests.
+     *
+     * Security properties (issue #6):
+     * - STATELESS session: no HttpSession created or used (ASVS V3.5.2)
+     * - CSRF disabled: safe because no cookies are used for auth on this chain
+     * - 401 JSON entry point: never redirects to /login (ASVS V13.1.3)
+     * - JwtAuthenticationFilter validates Bearer tokens before Spring's auth filter
+     * - /api/v1/auth/token is the only path permitted without a token
+     */
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    @Order(1)
+    public SecurityFilterChain apiFilterChain(HttpSecurity http) throws Exception {
+        http
+            .securityMatcher("/api/**")
+            .csrf(AbstractHttpConfigurer::disable)
+            .sessionManagement(session ->
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/v1/auth/token").permitAll()
+                .anyRequest().authenticated()
+            )
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                    response.getWriter().write(
+                        "{\"error\":\"Unauthorized\",\"message\":\"Authentication failed\"}"
+                    );
+                })
+            )
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+    /**
+     * Web filter chain — applies to all non-API requests (Thymeleaf UI).
+     *
+     * This chain is intentionally unchanged from before issue #6:
+     * - CSRF remains enabled (CLAUDE.md security rule)
+     * - Form login and session management intact
+     * - Role-based path matchers intact
+     */
+    @Bean
+    @Order(2)
+    public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
@@ -41,7 +92,6 @@ public class SecurityConfig {
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/manager/**").hasAnyRole("MANAGER", "ADMIN")
                 .requestMatchers("/employee/**").hasAnyRole("EMPLOYEE", "MANAGER", "ADMIN")
-                .requestMatchers("/api/**").hasAnyRole("EMPLOYEE", "MANAGER", "ADMIN")
                 .requestMatchers("/movement/**").authenticated()
                 .anyRequest().authenticated()
             )
