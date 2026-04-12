@@ -8,21 +8,9 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:14
-        env:
-          POSTGRES_DB: lapsdb
-          POSTGRES_USER: ${{ secrets.DB_USERNAME }}
-          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    # No external services needed: tests run with the 'test' profile (H2 in-memory,
+    # hardcoded JWT secret and seed password). This makes CI deterministic and
+    # secrets-free so it works on fork PRs as well as direct pushes.
 
     steps:
       - uses: actions/checkout@v4
@@ -34,19 +22,9 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build and test (with PostgreSQL)
+      - name: Build and test (H2 in-memory, no secrets required)
         working-directory: laps
-        run: mvn -B verify -Dspring.profiles.active=ci
-        env:
-          DB_URL: ${{ secrets.DB_URL }}
-          DB_USERNAME: ${{ secrets.DB_USERNAME }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          MAIL_HOST: ${{ secrets.MAIL_HOST }}
-          MAIL_PORT: ${{ secrets.MAIL_PORT }}
-          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
-          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
-          SEED_USER_PASSWORD: ${{ secrets.SEED_USER_PASSWORD }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: mvn -B verify -Dspring.profiles.active=test
 
       - name: Upload test results
         if: always()

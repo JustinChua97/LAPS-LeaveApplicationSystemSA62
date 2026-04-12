@@ -28,8 +28,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Covers all 8 acceptance criteria plus security negative tests:
  * alg:none, wrong secret, forged elevated role, CSRF still enforced on web chain.
  *
- * Uses the 'test' profile (H2 in-memory) — no external DB required.
- * Seed accounts are created by DataInitializer using seed.user.password=test-seed-password.
+ * Uses the 'test' profile (H2 in-memory) — no external DB required, no secrets needed.
+ * Seed accounts are created by DataInitializer using app.seed.password=test-seed-password
+ * (hardcoded in application-test.properties; SEED_USER_PASSWORD env var does not relax-bind
+ * to app.seed.password so CI cannot override the test value).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
