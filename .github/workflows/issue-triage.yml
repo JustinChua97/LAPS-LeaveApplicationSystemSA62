@@ -26,10 +26,43 @@ jobs:
               return;
             }
 
-            // GitHub renders checked checkboxes as "- [x]" and unchecked as "- [ ]"
-            const hasCheckedBoundary = body.includes('- [x]');
+            const sectionText = (heading) => {
+              const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const pattern = new RegExp(`(^|\\n)#+\\s+${escaped}\\s*\\n([\\s\\S]*?)(?=\\n#+\\s+|$)`, 'i');
+              const match = body.match(pattern);
+              return match ? match[2].trim() : '';
+            };
 
+            const stripComments = (value) => value
+              .replace(/<!--[\s\S]*?-->/g, '')
+              .trim();
+
+            const threatSurface = stripComments(sectionText('Threat Surface'));
+            const inputOutputContracts = stripComments(sectionText('Input / Output Contracts'));
+
+            // GitHub renders checked checkboxes as "- [x]" and unchecked as "- [ ]".
+            // Limit the check to the trust-boundary section so unrelated task lists do not pass triage.
+            const trustBoundaries = sectionText('Trust Boundaries Affected');
+            const hasCheckedBoundary = /-\s*\[[xX]\]/.test(trustBoundaries);
+            const hasThreatSurface = threatSurface.length > 0 &&
+              !/^\s*(?:_?no response_?|none|n\/a)\s*$/i.test(threatSurface);
+            const hasValidationRequirements =
+              inputOutputContracts.length > 0 &&
+              /validation/i.test(inputOutputContracts) &&
+              /(server-side|server side|@valid|bindingresult|bean validation|reject|constraint|pattern|size|max length|required)/i.test(inputOutputContracts);
+
+            const failures = [];
             if (!hasCheckedBoundary) {
+              failures.push('at least one checked **Trust Boundaries Affected** checkbox');
+            }
+            if (!hasThreatSurface) {
+              failures.push('a non-empty **Threat Surface** section');
+            }
+            if (!hasValidationRequirements) {
+              failures.push('explicit server-side validation requirements in **Input / Output Contracts**');
+            }
+
+            if (failures.length > 0) {
               // Add blocking label
               await github.rest.issues.addLabels({
                 owner: context.repo.owner,
@@ -58,18 +91,19 @@ jobs:
                 body: [
                   '## :lock: Security Triage Required',
                   '',
-                  'This issue is missing a required **Trust Boundaries Affected** selection.',
+                  'This issue is missing required security planning details:',
                   '',
-                  'Please edit the issue and check at least one trust boundary that this feature crosses.',
-                  'This field is required before the issue can enter the sprint backlog.',
+                  ...failures.map((failure) => `- ${failure}`),
+                  '',
+                  'Please edit the issue before moving it into the sprint backlog.',
                   '',
                   'Refer to [REQUIREMENTS_TEMPLATE.md](../../blob/main/REQUIREMENTS_TEMPLATE.md) for guidance on completing the security fields.'
                 ].join('\n')
               });
 
-              core.warning(`Issue #${issueNumber} is missing trust boundary selection — labelled blocked-missing-security-analysis`);
+              core.warning(`Issue #${issueNumber} failed security triage: ${failures.join(', ')}`);
             } else {
-              // Trust boundaries checked — remove blocking label if it exists
+              // Required security planning fields are complete — remove blocking label if it exists.
               try {
                 await github.rest.issues.removeLabel({
                   owner: context.repo.owner,
@@ -77,7 +111,7 @@ jobs:
                   issue_number: issueNumber,
                   name: 'blocked-missing-security-analysis'
                 });
-                core.info(`Issue #${issueNumber} now has trust boundaries — removed blocked-missing-security-analysis`);
+                core.info(`Issue #${issueNumber} now satisfies security triage — removed blocked-missing-security-analysis`);
               } catch (e) {
                 // Label was not present — nothing to remove
               }
