@@ -51,6 +51,7 @@ public class LeaveService {
 
         // Notify manager
         if (employee.getManager() != null) {
+            initEmailAssociations(saved);
             emailService.sendLeaveApplicationNotification(saved);
         }
 
@@ -124,6 +125,7 @@ public class LeaveService {
         // Update entitlement
         deductEntitlement(application, application.getEmployee());
 
+        initEmailAssociations(application);
         emailService.sendLeaveApprovalNotification(application);
     }
 
@@ -145,6 +147,7 @@ public class LeaveService {
         application.setManagerComment(comment);
         leaveAppRepo.save(application);
 
+        initEmailAssociations(application);
         emailService.sendLeaveRejectionNotification(application);
     }
 
@@ -379,5 +382,22 @@ public class LeaveService {
     private boolean isSubordinate(Employee employee, Employee manager) {
         return employee.getManager() != null &&
                employee.getManager().getId().equals(manager.getId());
+    }
+
+    /**
+     * Force-loads lazy associations needed by EmailService within the current
+     * Hibernate session, so the @Async email thread can access them after the
+     * session closes (fixes GenericJDBCException: This statement has been closed).
+     */
+    private void initEmailAssociations(LeaveApplication app) {
+        Employee emp = app.getEmployee();
+        emp.getName();
+        emp.getEmail();
+        Employee mgr = emp.getManager();
+        if (mgr != null) {
+            mgr.getName();
+            mgr.getEmail();
+        }
+        app.getLeaveType().getName();
     }
 }
