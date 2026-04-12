@@ -83,9 +83,17 @@ class JwtServiceTest {
     @DisplayName("validateToken_tamperedSignature_returnsFalse")
     void validateToken_tamperedSignature_returnsFalse() {
         String token = jwtService.generateToken(employeeUser());
-        // Flip the last character of the signature segment
-        String tampered = token.substring(0, token.length() - 1)
-                + (token.endsWith("a") ? "b" : "a");
+        // Change a character in the MIDDLE of the signature segment.
+        // The HS256 signature is 32 bytes = 43 base64url chars. The very last
+        // char only encodes 4 significant bits, so flipping it between 'a'/'b'
+        // (same top-4 bits: 0110) leaves the decoded bytes unchanged — JJWT
+        // accepts the token as valid. Middle characters encode all 6 bits fully,
+        // so a flip there reliably corrupts the decoded signature bytes.
+        int lastDot = token.lastIndexOf('.');
+        int midSig = lastDot + (token.length() - lastDot) / 2;
+        char original = token.charAt(midSig);
+        char replacement = (original == 'A') ? 'B' : 'A';
+        String tampered = token.substring(0, midSig) + replacement + token.substring(midSig + 1);
 
         assertThat(jwtService.validateToken(tampered)).isFalse();
     }

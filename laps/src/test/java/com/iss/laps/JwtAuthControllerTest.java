@@ -11,6 +11,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import javax.crypto.SecretKey;
@@ -34,6 +35,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+// Pin seed.user.password so CI's SEED_USER_PASSWORD env var cannot override it.
+// Without this, DataInitializer encodes with the real CI secret while the test
+// authenticates with "test-seed-password" → BCrypt mismatch → 401.
+@TestPropertySource(properties = "seed.user.password=test-seed-password")
 @DisplayName("JWT Authentication Integration Tests")
 class JwtAuthControllerTest {
 
