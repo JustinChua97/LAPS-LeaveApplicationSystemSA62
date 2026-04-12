@@ -58,6 +58,30 @@ body:
     validations:
       required: true
 
+  - type: textarea
+    id: threat_surface
+    attributes:
+      label: Threat Surface
+      description: |
+        Identify what new or changed attack surface this issue introduces.
+        Include endpoints, roles, data stores, external services, scheduled jobs, files,
+        templates, API consumers, and any trust boundary crossings.
+      placeholder: |
+        New / changed endpoints:
+          - POST /employee/leaves/apply - ROLE_EMPLOYEE only
+
+        New / changed data exposure:
+          - Leave reason is accepted from employee and may be shown to employee and manager.
+
+        New / changed external interactions:
+          - EmailService sends a notification to the employee's manager after submission.
+
+        Threat notes:
+          - Main risks are broken access control, invalid leave dates, HTML injection in reason,
+            SMTP header/content injection, and over-exposing leave details to the wrong role.
+    validations:
+      required: true
+
   - type: checkboxes
     id: trust_boundaries
     attributes:

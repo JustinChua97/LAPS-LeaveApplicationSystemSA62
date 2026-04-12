@@ -4,6 +4,28 @@
 
 # Feature Requirements: [TITLE] (Issue #NNN)
 
+## AI Parse Contract
+
+This document is intentionally machine-readable. AI coding agents must parse the stable
+`<!-- SECTION: id -->` markers below and must not infer requirements from prose outside
+those sections.
+
+Required section IDs:
+
+| Section ID | Required Content |
+|------------|------------------|
+| `metadata` | Issue number, owner, status, sprint/backlog state, linked PR |
+| `functional-requirements` | Numbered FR blocks with actor, trigger, flows, postconditions, exceptions |
+| `security-requirements` | SR rows mapped to OWASP ASVS controls and implementation points |
+| `threat-surface` | New or changed attack surface, exposed actors, assets, endpoints, and abuse cases |
+| `trust-boundary-analysis` | Boundary-by-boundary validation and rejection controls |
+| `data-flow-diagram` | Text data flow from actor through controller, service, repository, DB, and external services |
+| `input-validation-rules` | Field-level type, required, length, format, and rejection behavior |
+| `test-strategy` | Unit, integration, and security negative tests tied to requirements |
+
+An implementation plan is invalid if any required section is missing, empty, or replaced
+with placeholder text such as `TBD`, `N/A`, `unknown`, or `to be decided`.
+
 <!-- SECTION: metadata -->
 ## Metadata
 
@@ -79,6 +101,23 @@
 | V13 | API | REST endpoints require auth; no anonymous access to `/api/v1` |
 
 <!-- END SECTION: security-requirements -->
+
+---
+
+<!-- SECTION: threat-surface -->
+## Threat Surface
+
+> Name every new or changed way data, roles, users, external systems, scheduled work,
+> files, templates, or APIs interact with this feature.
+
+| Surface | New / Changed? | Actor or System | Asset at Risk | Abuse Case | Required Control |
+|---------|----------------|-----------------|---------------|------------|------------------|
+| `POST /[path]` | New | ROLE_X | [record / PII / entitlement] | Wrong role submits or changes data | `@PreAuthorize` / `SecurityConfig` rule |
+| `[Template name]` | Changed | ROLE_X | User-controlled display text | Stored or reflected HTML executes | Thymeleaf `th:text`, never `th:utext` for user input |
+| `[Repository method]` | Changed | Application | PostgreSQL data | Query injection or over-broad data access | Spring Data JPA parameter binding |
+| `EmailService.send*()` | Changed | Application / SMTP | Email content and recipients | SMTP header injection or data sent to wrong user | Validated email fields and fixed recipient lookup |
+
+<!-- END SECTION: threat-surface -->
 
 ---
 
