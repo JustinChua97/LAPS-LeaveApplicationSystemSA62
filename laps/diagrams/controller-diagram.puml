@@ -1,0 +1,122 @@
+@startuml LAPS Controller Layer
+!theme plain
+skinparam classAttributeIconSize 0
+skinparam classFontStyle Bold
+skinparam classBackgroundColor #F3E5F5
+skinparam classBorderColor #6A1B9A
+skinparam noteBackgroundColor #FFF9C4
+skinparam noteBorderColor #F9A825
+skinparam arrowColor #555555
+title LAPS – Controller Layer
+
+'─────────────────────────────────────────────────
+' WEB (THYMELEAF) CONTROLLERS
+'─────────────────────────────────────────────────
+class AuthController {
+  GET  /                 + root(): String
+  GET  /login            + loginPage(): String
+  GET  /access-denied    + accessDenied(): String
+}
+
+class EmployeeController {
+  GET  /employee/dashboard              + dashboard()
+  GET  /employee/leaves/apply           + applyLeaveForm()
+  POST /employee/leaves/apply           + applyLeave()
+  GET  /employee/leaves                 + leaveHistory()
+  GET  /employee/leaves/{id}            + viewLeave()
+  GET  /employee/leaves/{id}/edit       + editLeaveForm()
+  POST /employee/leaves/{id}/edit       + updateLeave()
+  POST /employee/leaves/{id}/delete     + deleteLeave()
+  POST /employee/leaves/{id}/cancel     + cancelLeave()
+  GET  /employee/compensation/claim     + compensationClaimForm()
+  POST /employee/compensation/claim     + submitCompensationClaim()
+}
+
+class ManagerController {
+  GET  /manager/dashboard                   + dashboard()
+  GET  /manager/leaves                      + viewPendingLeaves()
+  GET  /manager/leaves/{id}                 + viewLeaveDetail()
+  POST /manager/leaves/{id}/approve         + approveLeave()
+  POST /manager/leaves/{id}/reject          + rejectLeave()
+  GET  /manager/subordinates/leaves         + subordinateLeaveHistory()
+  GET  /manager/reports                     + reportsPage()
+  GET  /manager/reports/leave               + leaveReport()
+  GET  /manager/reports/leave/export        + exportLeaveReport(): ResponseEntity
+  GET  /manager/compensation                + viewCompensationClaims()
+  POST /manager/compensation/{id}/approve   + approveCompClaim()
+  POST /manager/compensation/{id}/reject    + rejectCompClaim()
+}
+
+class AdminController {
+  GET  /admin/dashboard                       + dashboard()
+  .. Employees ..
+  GET  /admin/employees                       + listEmployees()
+  GET  /admin/employees/new                   + newEmployeeForm()
+  POST /admin/employees/new                   + createEmployee()
+  GET  /admin/employees/{id}/edit             + editEmployeeForm()
+  POST /admin/employees/{id}/edit             + updateEmployee()
+  POST /admin/employees/{id}/deactivate       + deactivateEmployee()
+  POST /admin/employees/{id}/delete           + deleteEmployee()
+  GET  /admin/employees/{id}/entitlements     + viewEntitlements()
+  POST /admin/entitlements/{id}/update        + updateEntitlement()
+  .. Leave Types ..
+  GET  /admin/leave-types                     + listLeaveTypes()
+  GET  /admin/leave-types/new                 + newLeaveTypeForm()
+  POST /admin/leave-types/new                 + createLeaveType()
+  GET  /admin/leave-types/{id}/edit           + editLeaveTypeForm()
+  POST /admin/leave-types/{id}/edit           + updateLeaveType()
+  POST /admin/leave-types/{id}/delete         + deleteLeaveType()
+  .. Public Holidays ..
+  GET  /admin/holidays                        + listHolidays()
+  GET  /admin/holidays/new                    + newHolidayForm()
+  POST /admin/holidays/new                    + createHoliday()
+  POST /admin/holidays/{id}/delete            + deleteHoliday()
+}
+
+class MovementController {
+  GET /movement   + movementRegister()
+}
+
+'─────────────────────────────────────────────────
+' REST API CONTROLLERS
+'─────────────────────────────────────────────────
+class LeaveRestController <<REST>> {
+  GET /api/v1/leaves/my              + getMyLeaves(): ResponseEntity
+  GET /api/v1/leaves/{id}            + getLeave(id): ResponseEntity
+  GET /api/v1/leaves/entitlements    + getMyEntitlements(): ResponseEntity
+  GET /api/v1/movement               + getMovement(year, month): ResponseEntity
+  GET /api/v1/leave-types            + getLeaveTypes(): ResponseEntity
+}
+
+class JwtAuthController <<REST>> {
+  POST /api/v1/auth/token   + issueToken(request): ResponseEntity
+}
+
+'─────────────────────────────────────────────────
+' SERVICE DEPENDENCIES
+'─────────────────────────────────────────────────
+EmployeeController  ..> LeaveService    : uses
+EmployeeController  ..> EmployeeService : uses
+ManagerController   ..> LeaveService    : uses
+ManagerController   ..> EmployeeService : uses
+AdminController     ..> EmployeeService : uses
+AdminController     ..> AdminService    : uses
+MovementController  ..> LeaveService    : uses
+LeaveRestController ..> LeaveService    : uses
+LeaveRestController ..> EmployeeService : uses
+JwtAuthController   ..> JwtService      : uses
+
+note bottom of JwtAuthController
+  Stateless API chain.
+  CSRF disabled, JWT Bearer auth.
+  POST /api/v1/auth/token is
+  the only unauthenticated endpoint.
+end note
+
+note bottom of LeaveRestController
+  All endpoints require a valid
+  JWT Bearer token.
+  Session cookie is NOT used.
+end note
+
+@enduml

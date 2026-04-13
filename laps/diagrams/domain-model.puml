@@ -1,0 +1,131 @@
+@startuml LAPS Domain Model
+!theme plain
+skinparam classAttributeIconSize 0
+skinparam classFontStyle Bold
+skinparam classBackgroundColor #FFFDE7
+skinparam classBorderColor #F9A825
+skinparam enumBackgroundColor #E8F5E9
+skinparam enumBorderColor #388E3C
+skinparam arrowColor #555555
+title LAPS – Domain Model
+
+'─────────────────────────────────────────────────
+' ENUMERATIONS
+'─────────────────────────────────────────────────
+enum Role {
+  ROLE_EMPLOYEE
+  ROLE_MANAGER
+  ROLE_ADMIN
+}
+
+enum Designation {
+  ADMINISTRATIVE
+  PROFESSIONAL
+  SENIOR_PROFESSIONAL
+  ..annual leave days..
+  14 / 18 / 21
+  --
+  + getAnnualLeaveEntitlement(): int
+}
+
+enum LeaveStatus {
+  APPLIED
+  UPDATED
+  APPROVED
+  REJECTED
+  CANCELLED
+  DELETED
+}
+
+'─────────────────────────────────────────────────
+' ENTITIES
+'─────────────────────────────────────────────────
+class Employee {
+  - id: Long <<PK>>
+  - username: String <<unique>>
+  - password: String <<BCrypt>>
+  - name: String
+  - email: String
+  - role: Role
+  - designation: Designation
+  - active: boolean
+  - manager: Employee <<FK, nullable>>
+}
+
+class LeaveApplication {
+  - id: Long <<PK>>
+  - startDate: LocalDate
+  - endDate: LocalDate
+  - duration: double
+  - reason: String
+  - workDissemination: String
+  - contactDetails: String
+  - status: LeaveStatus
+  - managerComment: String
+  - appliedDate: LocalDateTime
+  - updatedDate: LocalDateTime
+  - halfDay: boolean
+  - halfDayType: String
+  --
+  + isEditable(): boolean
+  + isCancellable(): boolean
+  + isDeletable(): boolean
+}
+
+class LeaveType {
+  - id: Long <<PK>>
+  - name: String <<unique>>
+  - description: String
+  - maxDaysPerYear: int
+  - halfDayAllowed: boolean
+  - active: boolean
+}
+
+class LeaveEntitlement {
+  - id: Long <<PK>>
+  - year: int
+  - totalDays: double
+  - usedDays: double
+  .. unique: (employee, leaveType, year) ..
+  --
+  + getRemainingDays(): double
+}
+
+class CompensationClaim {
+  - id: Long <<PK>>
+  - overtimeDate: LocalDate
+  - overtimeHours: int <<min 4>>
+  - compensationDays: double
+  - status: ClaimStatus
+  - managerComment: String
+  - claimedDate: LocalDateTime
+  - processedDate: LocalDateTime
+  - reason: String
+  ..inner enum..
+  + enum ClaimStatus { PENDING, APPROVED, REJECTED }
+}
+
+class PublicHoliday {
+  - id: Long <<PK>>
+  - holidayDate: LocalDate <<unique>>
+  - description: String
+  - year: int
+}
+
+'─────────────────────────────────────────────────
+' RELATIONSHIPS
+'─────────────────────────────────────────────────
+Employee "1" o-- "0..*" Employee         : reports to (manager_id) >
+
+Employee       "1"    *-- "0..*" LeaveApplication  : applies >
+Employee       "1"    *-- "0..*" LeaveEntitlement  : holds >
+Employee       "1"    *-- "0..*" CompensationClaim : claims >
+
+LeaveApplication "0..*" --> "1" LeaveType         : type >
+LeaveEntitlement "0..*" --> "1" LeaveType         : type >
+
+Employee          --> Role
+Employee          --> Designation
+LeaveApplication  --> LeaveStatus
+
+@enduml
