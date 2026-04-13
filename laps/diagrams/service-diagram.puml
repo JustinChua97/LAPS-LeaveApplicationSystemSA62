@@ -1,0 +1,131 @@
+@startuml LAPS Service Layer
+!theme plain
+skinparam classAttributeIconSize 0
+skinparam classFontStyle Bold
+skinparam classBackgroundColor #E3F2FD
+skinparam classBorderColor #1565C0
+skinparam noteBackgroundColor #FFF9C4
+skinparam noteBorderColor #F9A825
+skinparam arrowColor #555555
+title LAPS – Service Layer
+
+'─────────────────────────────────────────────────
+' BUSINESS SERVICES
+'─────────────────────────────────────────────────
+class LeaveService {
+  .. Leave Applications ..
+  + applyLeave(application, employee): LeaveApplication
+  + updateLeave(id, updated, employee): LeaveApplication
+  + deleteLeave(id, employee): void
+  + cancelLeave(id, employee): void
+  + approveLeave(id, comment, manager): void
+  + rejectLeave(id, comment, manager): void
+  + findById(id): LeaveApplication
+  + findByIdAndEmployee(id, employee): LeaveApplication
+  .. Queries ..
+  + getMyLeaveHistory(employee): List<LeaveApplication>
+  + getMyLeaveHistoryPaged(employee, pageable): Page<LeaveApplication>
+  + getPendingApplicationsForManager(mgr): List<LeaveApplication>
+  + getSubordinateLeaveHistory(manager, year): List<LeaveApplication>
+  + getSubordinateLeaveHistoryPaged(manager, pageable): Page<LeaveApplication>
+  + getApprovedLeaveInMonth(year, month): List<LeaveApplication>
+  + getApprovedLeaveInRange(start, end): List<LeaveApplication>
+  + getApprovedLeaveByTypeAndRange(leaveTypeId, start, end): List<LeaveApplication>
+  + getSubordinateLeaveDuringPeriod(manager, start, end): List<LeaveApplication>
+  .. Compensation Claims ..
+  + claimCompensation(claim, employee): CompensationClaim
+  + approveCompensationClaim(id, comment, mgr): void
+  + rejectCompensationClaim(id, comment, mgr): void
+  + getMyCompensationClaims(employee): List<CompensationClaim>
+  + getPendingCompClaimsForManager(manager): List<CompensationClaim>
+  + getAllCompClaimsForManager(manager): List<CompensationClaim>
+  .. Leave Types ..
+  + getActiveLeaveTypes(): List<LeaveType>
+  + findLeaveTypeByName(name): Optional<LeaveType>
+}
+
+class EmployeeService {
+  .. Lookup ..
+  + findByUsername(username): Optional<Employee>
+  + findById(id): Employee
+  + findAll(): List<Employee>
+  + findAllIncludingInactive(): List<Employee>
+  + findSubordinates(manager): List<Employee>
+  + findByRole(role): List<Employee>
+  + existsByUsername(username): boolean
+  .. Mutations ..
+  + createEmployee(employee): Employee
+  + updateEmployee(employee): Employee
+  + updatePassword(employee, newPassword): void
+  + deactivateEmployee(id): void
+  + deleteEmployee(id): void
+  .. Entitlements ..
+  + getEntitlements(employee, year): List<LeaveEntitlement>
+  + updateEntitlement(id, totalDays): void
+}
+
+class AdminService {
+  .. Leave Types ..
+  + getAllLeaveTypes(): List<LeaveType>
+  + findLeaveTypeById(id): LeaveType
+  + saveLeaveType(lt): LeaveType
+  + deleteLeaveType(id): void
+  .. Public Holidays ..
+  + getHolidaysByYear(year): List<PublicHoliday>
+  + getAllHolidays(): List<PublicHoliday>
+  + saveHoliday(holiday): PublicHoliday
+  + deleteHoliday(id): void
+  + findHolidayById(id): PublicHoliday
+  + isHolidayDateTaken(date): boolean
+}
+
+'─────────────────────────────────────────────────
+' SUPPORT / UTILITY
+'─────────────────────────────────────────────────
+class EmailService <<@Async>> {
+  + sendLeaveApplicationNotification(la): void
+  + sendLeaveApprovalNotification(la): void
+  + sendLeaveRejectionNotification(la): void
+}
+
+class LeaveCalculator {
+  + calculateAnnualLeaveDays(start, end, holidays): double
+  + calculateMedicalLeaveDays(start, end): double
+  + calculateCompensationDays(overtimeHours): double
+  + isWorkingDay(date, holidays): boolean
+  + areWorkingDays(start, end, holidays): boolean
+}
+
+class SecurityUtils {
+  + getCurrentEmployee(): Employee
+}
+
+class JwtService {
+  + generateToken(userDetails): String
+  + extractUsername(token): String
+  + isTokenValid(token, userDetails): boolean
+}
+
+class CustomUserDetailsService {
+  + loadUserByUsername(username): UserDetails
+}
+
+'─────────────────────────────────────────────────
+' DEPENDENCIES
+'─────────────────────────────────────────────────
+LeaveService ..> EmailService    : notifies (async) >
+LeaveService ..> LeaveCalculator : calculates duration >
+
+note bottom of EmailService
+  All sends are @Async.
+  Failures are logged but
+  never abort the transaction.
+end note
+
+note right of SecurityUtils
+  Reads Spring SecurityContext
+  to resolve the current
+  authenticated Employee.
+end note
+
+@enduml

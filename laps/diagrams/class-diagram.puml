@@ -1,242 +1,77 @@
-@startuml LAPS Class Diagram
+@startuml LAPS Architecture Overview
 !theme plain
-skinparam classAttributeIconSize 0
 skinparam classFontStyle Bold
 skinparam packageStyle rectangle
-title LAPS – Leave Application Processing System\nClass Diagram
+skinparam packageBorderColor #888888
+skinparam classBackgroundColor #FAFAFA
+skinparam classBorderColor #AAAAAA
+skinparam arrowColor #555555
+skinparam packageBackgroundColor #F0F4FF
+title LAPS – Architecture Overview\n(see domain-model.puml / service-diagram.puml / controller-diagram.puml for detail)
 
 '─────────────────────────────────────────────────
-' ENUMERATIONS
+' LAYER: Models
 '─────────────────────────────────────────────────
-enum Role {
-  ROLE_EMPLOYEE
-  ROLE_MANAGER
-  ROLE_ADMIN
-}
-
-enum Designation {
-  ADMINISTRATIVE (14 days AL)
-  PROFESSIONAL (18 days AL)
-  SENIOR_PROFESSIONAL (21 days AL)
-  + getAnnualLeaveEntitlement(): int
-}
-
-enum LeaveStatus {
-  APPLIED
-  UPDATED
-  APPROVED
-  REJECTED
-  CANCELLED
-  DELETED
-}
-
-enum ClaimStatus {
-  PENDING
-  APPROVED
-  REJECTED
+package "Domain Model" <<Rectangle>> {
+  class Employee
+  class LeaveApplication
+  class LeaveType
+  class LeaveEntitlement
+  class CompensationClaim
+  class PublicHoliday
 }
 
 '─────────────────────────────────────────────────
-' MODEL CLASSES
+' LAYER: Services & Utilities
 '─────────────────────────────────────────────────
-class Employee {
-  - id: Long
-  - username: String
-  - password: String <<encoded>>
-  - name: String
-  - email: String
-  - role: Role
-  - designation: Designation
-  - active: boolean
-  --
-  + getSubordinates(): List<Employee>
-  + getLeaveApplications(): List<LeaveApplication>
-  + getLeaveEntitlements(): List<LeaveEntitlement>
-}
-
-class LeaveApplication {
-  - id: Long
-  - startDate: LocalDate
-  - endDate: LocalDate
-  - duration: double
-  - reason: String
-  - workDissemination: String
-  - contactDetails: String
-  - status: LeaveStatus
-  - managerComment: String
-  - appliedDate: LocalDateTime
-  - updatedDate: LocalDateTime
-  - halfDay: boolean
-  - halfDayType: String
-  --
-  + isEditable(): boolean
-  + isCancellable(): boolean
-  + isDeletable(): boolean
-}
-
-class LeaveType {
-  - id: Long
-  - name: String
-  - description: String
-  - maxDaysPerYear: int
-  - halfDayAllowed: boolean
-  - active: boolean
-}
-
-class LeaveEntitlement {
-  - id: Long
-  - year: int
-  - totalDays: double
-  - usedDays: double
-  --
-  + getRemainingDays(): double
-}
-
-class PublicHoliday {
-  - id: Long
-  - holidayDate: LocalDate
-  - description: String
-  - year: int
-}
-
-class CompensationClaim {
-  - id: Long
-  - overtimeDate: LocalDate
-  - overtimeHours: int
-  - compensationDays: double
-  - status: ClaimStatus
-  - managerComment: String
-  - claimedDate: LocalDateTime
-  - reason: String
+package "Service Layer" <<Rectangle>> {
+  class LeaveService
+  class EmployeeService
+  class AdminService
+  class EmailService
+  class LeaveCalculator
+  class SecurityUtils
+  class JwtService
+  class CustomUserDetailsService
 }
 
 '─────────────────────────────────────────────────
-' SERVICE CLASSES
+' LAYER: Controllers (Web UI)
 '─────────────────────────────────────────────────
-class LeaveService {
-  + applyLeave(application, employee): LeaveApplication
-  + updateLeave(id, updated, employee): LeaveApplication
-  + deleteLeave(id, employee): void
-  + cancelLeave(id, employee): void
-  + approveLeave(id, comment, manager): void
-  + rejectLeave(id, comment, manager): void
-  + getMyLeaveHistory(employee): List<LeaveApplication>
-  + getPendingApplicationsForManager(mgr): List<LeaveApplication>
-  + claimCompensation(claim, employee): CompensationClaim
-  + approveCompensationClaim(id, comment, mgr): void
-}
-
-class EmployeeService {
-  + findByUsername(username): Optional<Employee>
-  + createEmployee(employee): Employee
-  + updateEmployee(employee): Employee
-  + deactivateEmployee(id): void
-  + getEntitlements(employee, year): List<LeaveEntitlement>
-  + updateEntitlement(id, totalDays): void
-}
-
-class AdminService {
-  + getAllLeaveTypes(): List<LeaveType>
-  + saveLeaveType(lt): LeaveType
-  + getHolidaysByYear(year): List<PublicHoliday>
-  + saveHoliday(holiday): PublicHoliday
-}
-
-class EmailService {
-  + sendLeaveApplicationNotification(la): void
-  + sendLeaveApprovalNotification(la): void
-  + sendLeaveRejectionNotification(la): void
-}
-
-class LeaveCalculator {
-  + calculateAnnualLeaveDays(start, end, holidays): double
-  + calculateMedicalLeaveDays(start, end): double
-  + isWorkingDay(date, holidays): boolean
-  + calculateCompensationDays(hours): double
+package "Web Controllers" <<Rectangle>> {
+  class AuthController
+  class EmployeeController
+  class ManagerController
+  class AdminController
+  class MovementController
 }
 
 '─────────────────────────────────────────────────
-' CONTROLLER CLASSES
+' LAYER: REST API
 '─────────────────────────────────────────────────
-class EmployeeController {
-  + dashboard(): String
-  + applyLeaveForm(): String
-  + applyLeave(): String
-  + leaveHistory(): String
-  + viewLeave(): String
-  + editLeaveForm(): String
-  + updateLeave(): String
-  + deleteLeave(): String
-  + cancelLeave(): String
-}
-
-class ManagerController {
-  + dashboard(): String
-  + viewPendingLeaves(): String
-  + viewLeaveDetail(): String
-  + approveLeave(): String
-  + rejectLeave(): String
-  + subordinateLeaveHistory(): String
-  + leaveReport(): String
-  + exportLeaveReport(): ResponseEntity
-}
-
-class AdminController {
-  + listEmployees(): String
-  + createEmployee(): String
-  + updateEmployee(): String
-  + manageLeaveTypes(): String
-  + manageHolidays(): String
-  + updateEntitlement(): String
-}
-
-class LeaveRestController <<REST>> {
-  + getMyLeaves(): ResponseEntity
-  + getLeave(id): ResponseEntity
-  + getMyEntitlements(): ResponseEntity
-  + getMovement(year, month): ResponseEntity
-  + getLeaveTypes(): ResponseEntity
+package "REST API" <<Rectangle>> {
+  class LeaveRestController <<REST>>
+  class JwtAuthController <<REST>>
 }
 
 '─────────────────────────────────────────────────
-' RELATIONSHIPS
+' INTER-LAYER DEPENDENCIES
 '─────────────────────────────────────────────────
+EmployeeController  ..> LeaveService
+EmployeeController  ..> EmployeeService
+ManagerController   ..> LeaveService
+ManagerController   ..> EmployeeService
+AdminController     ..> EmployeeService
+AdminController     ..> AdminService
+MovementController  ..> LeaveService
+LeaveRestController ..> LeaveService
+LeaveRestController ..> EmployeeService
+JwtAuthController   ..> JwtService
 
-' Self-referencing manager hierarchy
-Employee "1" o-- "0..*" Employee : manager >
-
-' Employee to leave applications
-Employee "1" *-- "0..*" LeaveApplication : applies >
-Employee "1" *-- "0..*" LeaveEntitlement : has >
-Employee "1" *-- "0..*" CompensationClaim : claims >
-
-' Leave application to leave type
-LeaveApplication "0..*" --> "1" LeaveType : type >
-
-' Leave entitlement to leave type
-LeaveEntitlement "0..*" --> "1" LeaveType : type >
-
-' Enumerations
-Employee --> Role
-Employee --> Designation
-LeaveApplication --> LeaveStatus
-CompensationClaim --> ClaimStatus
-
-' Service dependencies
-LeaveService ..> LeaveApplication : manages
-LeaveService ..> CompensationClaim : manages
-LeaveService ..> LeaveCalculator : uses
-LeaveService ..> EmailService : uses
-EmployeeService ..> Employee : manages
-AdminService ..> LeaveType : manages
-AdminService ..> PublicHoliday : manages
-
-' Controller dependencies
-EmployeeController ..> LeaveService : uses
-EmployeeController ..> EmployeeService : uses
-ManagerController ..> LeaveService : uses
-AdminController ..> EmployeeService : uses
-AdminController ..> AdminService : uses
-LeaveRestController ..> LeaveService : uses
+LeaveService    ..> EmailService
+LeaveService    ..> LeaveCalculator
+EmployeeService ..> "Domain Model"
+AdminService    ..> "Domain Model"
+LeaveService    ..> "Domain Model"
 
 @enduml
