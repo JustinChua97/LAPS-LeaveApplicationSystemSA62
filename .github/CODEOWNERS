@@ -1,0 +1,8 @@
+# ─────────────────────────────────────────────────────────────
+# CODEOWNERS — LAPS Project
+#
+# All team members are required reviewers for every PR.
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# ─────────────────────────────────────────────────────────────
+
+*   @AnimaExMachina @JustinChua97 @bryanpwy @KumaraguruSurya @Jemilin-code @zctiong-iss @abn-13
