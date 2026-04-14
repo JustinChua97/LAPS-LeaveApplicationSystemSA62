@@ -1,0 +1,33 @@
+@startuml
+
+!theme plain
+
+autonumber
+
+actor "Employee" as User1
+actor "Manager" as User2
+boundary ":LeavePortalUI" as View
+control ":EmployeeController" as Controller
+control ":ManagerController" as Controller2
+participant "LeaveService" as Service1
+entity "LeaveApplicationDomain" as Domain1
+entity "LeaveEntitlementDomain" as Domain2
+
+== Phase: User Interface Interaction ==
+User1 -> View : dashboard()
+
+== Phase: Web Request Routing ==
+View -> Controller : applyLeave()
+
+== Phase: Business Logic & Validation ==
+Controller -> Service1 : applyLeave(application, employee)
+Service1 -> User2 : getPendingApplicationsForManager()
+User2 -> View: dashboard()
+View -> Controller2 : viewPendingLeaves ()
+Controller2 -> Service1 : approveLeave()
+
+== Phase: Data Persistence ==
+Service1 -> Domain1 : approveLeave()
+Service1 -> Domain2 : updateEntitlement()
+
+@enduml
