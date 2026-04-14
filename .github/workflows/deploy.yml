@@ -206,29 +206,11 @@ jobs:
             docker pull '${{ steps.image.outputs.image }}'
 
             # Deploy via Compose — export so Docker Compose picks it up for ${LAPS_IMAGE} interpolation
+            # --wait blocks until laps-app healthcheck passes (or --wait-timeout expires)
             export LAPS_IMAGE='${{ steps.image.outputs.image }}'
             cd /opt/laps
             docker compose pull
-            docker compose up -d --remove-orphans
-          REMOTE
-
-      - name: Health check
-        run: |
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} bash << 'REMOTE'
-            set -e
-            echo "Waiting for application to become healthy..."
-            for i in $(seq 1 12); do
-              sleep 5
-              if docker compose -f /opt/laps/docker-compose.yml ps laps-app | grep -q "Up"; then
-                if curl -sf http://localhost:8080/login > /dev/null 2>&1; then
-                  echo "Health check passed (attempt ${i})"
-                  exit 0
-                fi
-              fi
-            done
-            echo "ERROR: Application did not become healthy in 60s"
-            docker compose -f /opt/laps/docker-compose.yml logs --tail=50
-            exit 1
+            docker compose up -d --remove-orphans --wait --wait-timeout 180
           REMOTE
 
       - name: Print deployment summary
