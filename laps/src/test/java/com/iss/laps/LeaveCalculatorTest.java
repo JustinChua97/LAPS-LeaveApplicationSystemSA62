@@ -140,8 +140,20 @@ class LeaveCalculatorTest {
     }
 
     @Test
-    @DisplayName("3 overtime hours (less than 4) earns 0 compensation days")
-    void compensationDays_lessThan4hours_returns0() {
-        assertEquals(0.0, calculator.calculateCompensationDays(3));
+    @DisplayName("1 overtime hour earns 0.125 compensation day")
+    void compensationDays_1hour_returns0point125() {
+        assertEquals(0.125, calculator.calculateCompensationDays(1));
+    }
+
+    @Test
+    @DisplayName("2 overtime hours earns 0.25 compensation day")
+    void compensationDays_2hours_returns0point25() {
+        assertEquals(0.25, calculator.calculateCompensationDays(2));
+    }
+
+    @Test
+    @DisplayName("3 overtime hours earns 0.375 compensation day")
+    void compensationDays_3hours_returns0point375() {
+        assertEquals(0.375, calculator.calculateCompensationDays(3));
     }
 }

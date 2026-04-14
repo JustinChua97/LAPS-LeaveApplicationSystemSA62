@@ -229,14 +229,14 @@ class LeaveServiceTest {
     }
 
     @Test
-    @DisplayName("claimCompensation: minimum 4 overtime hours is accepted")
+    @DisplayName("claimCompensation: minimum 1 overtime hour is accepted")
     void claimCompensation_overtimeHoursAtMin_succeeds() {
         CompensationClaim claim = new CompensationClaim();
         claim.setOvertimeDate(LocalDate.of(2026, 4, 10));
-        claim.setOvertimeHours(4);
+        claim.setOvertimeHours(1);
         when(compClaimRepo.sumOvertimeHoursByEmployeeAndMonth(any(), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(0);
-        when(leaveCalculator.calculateCompensationDays(4)).thenReturn(0.5);
+        when(leaveCalculator.calculateCompensationDays(1)).thenReturn(0.125);
         when(compClaimRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         CompensationClaim result = leaveService.claimCompensation(claim, employee);
