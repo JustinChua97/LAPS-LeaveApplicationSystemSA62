@@ -69,6 +69,7 @@ jobs:
     if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch'
     needs: [ build-and-test, semgrep-sast ]
     permissions:
+      actions: read
       contents: read
 
     steps:
