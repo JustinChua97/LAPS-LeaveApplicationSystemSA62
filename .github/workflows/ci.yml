@@ -3,6 +3,8 @@ name: CI - Build, Test and Security Scan
 on:
   pull_request:
     branches: [ main ]
+  push:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -59,3 +61,78 @@ jobs:
         run: semgrep ci
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+  docker-push:
+    name: Build and push Docker image to ECR
+    runs-on: ubuntu-latest
+    # Only push images built from main — not from PRs (no secrets available on forks)
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [ build-and-test, semgrep-sast ]
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.5
+          terraform_wrapper: false
+
+      - name: Restore Terraform state
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          name: laps-terraform-state
+          path: infra/terraform
+          workflow: ci.yml
+          branch: main
+          search_artifacts: true
+          if_no_artifact_found: ignore
+
+      - name: Terraform init, fmt-check, validate, apply
+        working-directory: infra/terraform
+        env:
+          TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+        run: |
+          terraform init -backend=false
+          terraform fmt -check -recursive
+          terraform validate
+          terraform apply -auto-approve
+
+      - name: Save Terraform state
+        uses: actions/upload-artifact@v4
+        with:
+          name: laps-terraform-state
+          path: infra/terraform/terraform.tfstate
+          retention-days: 14
+          overwrite: true
+          if-no-files-found: error
+
+      - name: Read ECR repository URL
+        id: ecr
+        working-directory: infra/terraform
+        run: echo "url=$(terraform output -raw ecr_repository_url)" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Amazon ECR
+        run: |
+          aws ecr get-login-password --region ${{ vars.AWS_REGION }} \
+            | docker login --username AWS --password-stdin ${{ steps.ecr.outputs.url }}
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --tag ${{ steps.ecr.outputs.url }}:${{ github.sha }} \
+            .
+
+      - name: Push Docker image to ECR
+        run: |
+          docker push ${{ steps.ecr.outputs.url }}:${{ github.sha }}
