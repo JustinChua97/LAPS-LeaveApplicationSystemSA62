@@ -61,7 +61,7 @@ jobs:
           ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
-      - name: Install Docker and docker-compose-plugin on EC2 (idempotent)
+      - name: Install Docker and Docker Compose plugin on EC2 (idempotent)
         run: |
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} bash << 'REMOTE'
             set -e
@@ -72,8 +72,15 @@ jobs:
               sudo usermod -aG docker "$USER"
             fi
             if ! docker compose version &>/dev/null; then
-              echo "Installing docker-compose-plugin..."
-              sudo dnf install -y docker-compose-plugin
+              echo "Installing Docker Compose V2 plugin..."
+              # docker-compose-plugin is not in Amazon Linux 2023 repos — install binary directly
+              COMPOSE_VERSION="v2.35.0"
+              PLUGIN_DIR="/usr/local/lib/docker/cli-plugins"
+              sudo mkdir -p "${PLUGIN_DIR}"
+              sudo curl -fsSL \
+                "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-x86_64" \
+                -o "${PLUGIN_DIR}/docker-compose"
+              sudo chmod +x "${PLUGIN_DIR}/docker-compose"
             fi
             echo "Docker $(docker --version), Compose $(docker compose version --short)"
           REMOTE
