@@ -1,12 +1,8 @@
 package com.iss.laps.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.iss.laps.service.CustomUserDetailsService;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
+import java.io.IOException;
+import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -17,8 +13,14 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
-import java.util.Map;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.iss.laps.service.CustomUserDetailsService;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Validates JWT Bearer tokens on every API request.
@@ -33,77 +35,53 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String BEARER_PREFIX = "Bearer ";
-    private static final String AUTH_HEADER = "Authorization";
-    /** Token endpoint does not require a Bearer token — skip filter. */
-    private static final String TOKEN_ENDPOINT = "/api/v1/auth/token";
-
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
     private final ObjectMapper objectMapper;
 
     @Override
-    protected void doFilterInternal(@jakarta.annotation.Nonnull HttpServletRequest request,
-                                    @jakarta.annotation.Nonnull HttpServletResponse response,
-                                    @jakarta.annotation.Nonnull FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain chain) throws IOException, ServletException {
 
-        // Skip the token-issuance endpoint itself.
-        if (isTokenEndpoint(request)) {
-            filterChain.doFilter(request, response);
+        // Skip token issuance endpoint
+        if (request.getRequestURI().equals("/api/v1/auth/token")) {
+            chain.doFilter(request, response);
             return;
         }
 
-        String authHeader = request.getHeader(AUTH_HEADER);
-        if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
-            sendUnauthorized(response);
+        String header = request.getHeader("Authorization");
+        if (header == null || !header.startsWith("Bearer ")) {
+            unauthorized(response);
             return;
         }
 
-        String token = authHeader.substring(BEARER_PREFIX.length());
-
+        String token = header.substring(7);
         if (!jwtService.validateToken(token)) {
-            sendUnauthorized(response);
+            unauthorized(response);
             return;
         }
 
-        String username;
+        String username = jwtService.extractUsername(token);
+        UserDetails user;
         try {
-            username = jwtService.extractUsername(token);
-        } catch (Exception e) {
-            sendUnauthorized(response);
-            return;
-        }
-
-        // Load authorities from DB — never trust claims in the token for role assignment
-        UserDetails userDetails;
-        try {
-            userDetails = userDetailsService.loadUserByUsername(username);
+            user = userDetailsService.loadUserByUsername(username);
         } catch (UsernameNotFoundException e) {
-            sendUnauthorized(response);
+            unauthorized(response);
             return;
         }
 
-        UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+        auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+        SecurityContextHolder.getContext().setAuthentication(auth);
 
-        filterChain.doFilter(request, response);
+        chain.doFilter(request, response);
     }
 
-    private void sendUnauthorized(HttpServletResponse response) throws IOException {
+    private void unauthorized(HttpServletResponse response) throws IOException {
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         objectMapper.writeValue(response.getWriter(),
                 Map.of("error", "Unauthorized", "message", "Authentication failed"));
-    }
-
-    private boolean isTokenEndpoint(HttpServletRequest request) {
-        String path = request.getRequestURI();
-        String contextPath = request.getContextPath();
-        if (contextPath != null && !contextPath.isBlank() && path.startsWith(contextPath)) {
-            path = path.substring(contextPath.length());
-        }
-        return TOKEN_ENDPOINT.equals(path);
     }
 }
