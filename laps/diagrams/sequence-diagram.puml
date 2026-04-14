@@ -23,7 +23,7 @@ View -> Controller : applyLeave()
 Controller -> Service1 : applyLeave(application, employee)
 Service1 -> User2 : getPendingApplicationsForManager()
 User2 -> View: dashboard()
-View -> Controller2 : viewPendingLeaves ()
+View -> Controller2 : viewPendingLeaves()
 Controller2 -> Service1 : approveLeave()
 
 == Phase: Data Persistence ==
