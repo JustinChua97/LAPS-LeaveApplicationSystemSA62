@@ -40,7 +40,7 @@ public class AdminController {
     @GetMapping("/employees")
     public String listEmployees(Model model) {
         model.addAttribute("employees", employeeService.findAllIncludingInactive());
-        return "admin/employee-list";
+        return "admin/employee";
     }
 
     @GetMapping("/employees/new")
