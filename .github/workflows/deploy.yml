@@ -205,12 +205,11 @@ jobs:
             # Pull new image
             docker pull '${{ steps.image.outputs.image }}'
 
-            # Deploy via Compose — LAPS_IMAGE passed as env var, not stored in .env
+            # Deploy via Compose — export so Docker Compose picks it up for ${LAPS_IMAGE} interpolation
+            export LAPS_IMAGE='${{ steps.image.outputs.image }}'
             cd /opt/laps
-            LAPS_IMAGE='${{ steps.image.outputs.image }}' \
-              docker compose pull
-            LAPS_IMAGE='${{ steps.image.outputs.image }}' \
-              docker compose up -d --remove-orphans
+            docker compose pull
+            docker compose up -d --remove-orphans
           REMOTE
 
       - name: Health check
