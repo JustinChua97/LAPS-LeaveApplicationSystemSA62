@@ -95,11 +95,13 @@ jobs:
             echo "Docker $(docker --version), Compose $(docker compose version --short)"
           REMOTE
 
-      - name: Stop legacy systemd laps service if running
+      - name: Stop legacy systemd services (laps + nginx) if running
         run: |
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} bash << 'REMOTE'
-            sudo systemctl stop laps   2>/dev/null || true
-            sudo systemctl disable laps 2>/dev/null || true
+            sudo systemctl stop    laps  2>/dev/null || true
+            sudo systemctl disable laps  2>/dev/null || true
+            sudo systemctl stop    nginx 2>/dev/null || true
+            sudo systemctl disable nginx 2>/dev/null || true
           REMOTE
 
       - name: Write environment file on EC2
