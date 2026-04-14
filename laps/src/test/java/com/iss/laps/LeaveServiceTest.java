@@ -199,24 +199,24 @@ class LeaveServiceTest {
     // =========== COMPENSATION CLAIM — overtime cap (issue #19) ===========
 
     @Test
-    @DisplayName("claimCompensation: overtime hours above 8 throws IllegalArgumentException")
+    @DisplayName("claimCompensation: overtime hours above 12 throws IllegalArgumentException")
     void claimCompensation_overtimeHoursExceedsMax_throwsException() {
         CompensationClaim claim = new CompensationClaim();
         claim.setOvertimeDate(LocalDate.of(2026, 4, 10));
-        claim.setOvertimeHours(9);
+        claim.setOvertimeHours(13);
 
         assertThatThrownBy(() -> leaveService.claimCompensation(claim, employee))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("cannot exceed 8");
+                .hasMessageContaining("cannot exceed 12");
     }
 
     @Test
-    @DisplayName("claimCompensation: exactly 8 overtime hours is accepted")
+    @DisplayName("claimCompensation: exactly 12 overtime hours is accepted")
     void claimCompensation_overtimeHoursAtMax_succeeds() {
         CompensationClaim claim = new CompensationClaim();
         claim.setOvertimeDate(LocalDate.of(2026, 4, 10));
-        claim.setOvertimeHours(8);
-        when(leaveCalculator.calculateCompensationDays(8)).thenReturn(1.0);
+        claim.setOvertimeHours(12);
+        when(leaveCalculator.calculateCompensationDays(12)).thenReturn(1.5);
         when(compClaimRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         CompensationClaim result = leaveService.claimCompensation(claim, employee);
