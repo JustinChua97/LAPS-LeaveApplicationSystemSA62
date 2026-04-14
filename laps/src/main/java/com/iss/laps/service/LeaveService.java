@@ -209,6 +209,9 @@ public class LeaveService {
 
     @Transactional
     public CompensationClaim claimCompensation(CompensationClaim claim, Employee employee) {
+        if (claim.getOvertimeHours() > 8) {
+            throw new IllegalArgumentException("Overtime hours cannot exceed 8 per day");
+        }
         claim.setEmployee(employee);
         double compDays = leaveCalculator.calculateCompensationDays(claim.getOvertimeHours());
         claim.setCompensationDays(compDays);

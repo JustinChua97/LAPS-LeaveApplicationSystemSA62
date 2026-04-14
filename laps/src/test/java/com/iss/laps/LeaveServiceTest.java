@@ -195,4 +195,50 @@ class LeaveServiceTest {
                 .isInstanceOf(LeaveApplicationException.class)
                 .hasMessageContaining("cannot be deleted");
     }
+
+    // =========== COMPENSATION CLAIM — overtime cap (issue #19) ===========
+
+    @Test
+    @DisplayName("claimCompensation: overtime hours above 8 throws IllegalArgumentException")
+    void claimCompensation_overtimeHoursExceedsMax_throwsException() {
+        CompensationClaim claim = new CompensationClaim();
+        claim.setOvertimeDate(LocalDate.of(2026, 4, 10));
+        claim.setOvertimeHours(9);
+
+        assertThatThrownBy(() -> leaveService.claimCompensation(claim, employee))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot exceed 8");
+    }
+
+    @Test
+    @DisplayName("claimCompensation: exactly 8 overtime hours is accepted")
+    void claimCompensation_overtimeHoursAtMax_succeeds() {
+        CompensationClaim claim = new CompensationClaim();
+        claim.setOvertimeDate(LocalDate.of(2026, 4, 10));
+        claim.setOvertimeHours(8);
+        when(leaveCalculator.calculateCompensationDays(8)).thenReturn(1.0);
+        when(compClaimRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        CompensationClaim result = leaveService.claimCompensation(claim, employee);
+
+        assertThat(result.getEmployee()).isEqualTo(employee);
+        assertThat(result.getStatus()).isEqualTo(CompensationClaim.ClaimStatus.PENDING);
+        verify(compClaimRepo).save(any(CompensationClaim.class));
+    }
+
+    @Test
+    @DisplayName("claimCompensation: minimum 4 overtime hours is accepted")
+    void claimCompensation_overtimeHoursAtMin_succeeds() {
+        CompensationClaim claim = new CompensationClaim();
+        claim.setOvertimeDate(LocalDate.of(2026, 4, 10));
+        claim.setOvertimeHours(4);
+        when(leaveCalculator.calculateCompensationDays(4)).thenReturn(0.5);
+        when(compClaimRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        CompensationClaim result = leaveService.claimCompensation(claim, employee);
+
+        assertThat(result.getEmployee()).isEqualTo(employee);
+        assertThat(result.getStatus()).isEqualTo(CompensationClaim.ClaimStatus.PENDING);
+        verify(compClaimRepo).save(any(CompensationClaim.class));
+    }
 }

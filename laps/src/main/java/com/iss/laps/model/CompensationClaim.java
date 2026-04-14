@@ -1,6 +1,7 @@
 package com.iss.laps.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -29,7 +30,8 @@ public class CompensationClaim {
 
     @Column(nullable = false)
     @Min(4)
-    private int overtimeHours; // every 4 hours = 0.5 day
+    @Max(8)
+    private int overtimeHours; // every 4 hours = 0.5 day; max 8 hours per day (closes #19)
 
     // Computed: overtimeHours / 4 * 0.5
     @Column(nullable = false)

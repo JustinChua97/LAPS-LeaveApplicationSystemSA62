@@ -22,8 +22,10 @@
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Overtime Hours <span class="text-danger">*</span></label>
                             <input type="number" class="form-control" th:field="*{overtimeHours}"
-                                   min="4" step="4" placeholder="Minimum 4 hours" required>
-                            <div class="form-text">Must be a multiple of 4 (4h = 0.5 day comp leave)</div>
+                                   min="4" max="8" step="4" placeholder="4 or 8 hours" required>
+                            <div class="form-text">4 or 8 hours per day (4h = 0.5 day, 8h = 1 day comp leave)</div>
+                            <div class="text-danger small" th:if="${#fields.hasErrors('overtimeHours')}"
+                                 th:errors="*{overtimeHours}"></div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Reason</label>

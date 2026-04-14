@@ -187,13 +187,21 @@ public class EmployeeController {
     }
 
     @PostMapping("/compensation/claim")
-    public String submitCompensationClaim(@ModelAttribute("claim") CompensationClaim claim,
+    public String submitCompensationClaim(@Valid @ModelAttribute("claim") CompensationClaim claim,
+                                           BindingResult result,
+                                           Model model,
                                            RedirectAttributes redirectAttrs) {
+        if (result.hasErrors()) {
+            Employee employee = securityUtils.getCurrentEmployee();
+            model.addAttribute("myClaims", leaveService.getMyCompensationClaims(employee));
+            model.addAttribute("today", LocalDate.now());
+            return "employee/compensation-claim";
+        }
         Employee employee = securityUtils.getCurrentEmployee();
         try {
             leaveService.claimCompensation(claim, employee);
             redirectAttrs.addFlashAttribute("success", "Compensation claim submitted.");
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             redirectAttrs.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/employee/compensation/claim";
