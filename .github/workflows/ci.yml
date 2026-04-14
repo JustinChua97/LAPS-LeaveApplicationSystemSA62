@@ -65,8 +65,8 @@ jobs:
   docker-push:
     name: Build and push Docker image to ECR
     runs-on: ubuntu-latest
-    # Only push images built from main — not from PRs (no secrets available on forks)
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # Push on merge to main; also allow manual workflow_dispatch for branch testing
+    if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch'
     needs: [ build-and-test, semgrep-sast ]
     permissions:
       contents: read
