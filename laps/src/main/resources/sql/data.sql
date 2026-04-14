@@ -12,9 +12,10 @@ VALUES
     ('Compensation', 'Compensation leave earned from overtime work (4 hrs = 0.5 day)', 36, true, true)
 ON CONFLICT (name) DO NOTHING;
 
--- Compensation leave is capped at a maximum of 36 days. 
--- Employees can only work up to 12 hours a day; with a cap of 72 overtime hours a month, or 864 overtime hours in a year.
--- This works out to 864 / 24 = 36 days in a year that they can claim back compensation leave. 
+-- Compensation leave is capped at a maximum of 36 days (company policy).
+-- MOM limits: max 12 total hours/day, max 72 overtime hours/month = 864 overtime hours/year.
+-- Formula: (overtimeHours / 4) * 0.5 = overtimeHours / 8 → MOM max = 864 / 8 = 108 comp days/year.
+-- The 36-day cap is a deliberate company policy, not derived from MOM arithmetic.
 
 -- ============================================================
 -- Singapore Public Holidays 2026

@@ -212,6 +212,15 @@ public class LeaveService {
         if (claim.getOvertimeHours() > 12) {
             throw new IllegalArgumentException("Overtime hours cannot exceed 12 per day");
         }
+        LocalDate overtimeDate = claim.getOvertimeDate();
+        LocalDate startOfMonth = overtimeDate.withDayOfMonth(1);
+        LocalDate endOfMonth   = overtimeDate.withDayOfMonth(overtimeDate.lengthOfMonth());
+        int monthlyHours = compClaimRepo.sumOvertimeHoursByEmployeeAndMonth(
+                employee, startOfMonth, endOfMonth);
+        if (monthlyHours + claim.getOvertimeHours() > 72) {
+            throw new IllegalArgumentException(
+                    "This claim would exceed the 72 overtime hours allowed per month (MOM limit)");
+        }
         claim.setEmployee(employee);
         double compDays = leaveCalculator.calculateCompensationDays(claim.getOvertimeHours());
         claim.setCompensationDays(compDays);
