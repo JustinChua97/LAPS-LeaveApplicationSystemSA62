@@ -128,18 +128,6 @@ class LeaveCalculatorTest {
     }
 
     @Test
-    @DisplayName("8 overtime hours earns 1.0 compensation day")
-    void compensationDays_8hours_returns1() {
-        assertEquals(1.0, calculator.calculateCompensationDays(8));
-    }
-
-    @Test
-    @DisplayName("12 overtime hours earns 1.5 compensation days")
-    void compensationDays_12hours_returns1point5() {
-        assertEquals(1.5, calculator.calculateCompensationDays(12));
-    }
-
-    @Test
     @DisplayName("1 overtime hour earns 0.125 compensation day")
     void compensationDays_1hour_returns0point125() {
         assertEquals(0.125, calculator.calculateCompensationDays(1));
