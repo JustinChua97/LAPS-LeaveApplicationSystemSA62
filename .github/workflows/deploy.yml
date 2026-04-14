@@ -107,7 +107,7 @@ jobs:
       - name: Write environment file on EC2
         run: |
           cat > /tmp/laps.env << 'EOF'
-          DB_URL=${{ secrets.DB_URL }}
+          DB_URL=jdbc:postgresql://postgres:5432/lapsdb
           DB_USERNAME=${{ secrets.DB_USERNAME }}
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
           MAIL_HOST=${{ secrets.MAIL_HOST }}
@@ -122,46 +122,6 @@ jobs:
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
             "sudo mkdir -p /opt/laps && sudo mv /tmp/laps.env /opt/laps/.env && sudo chmod 600 /opt/laps/.env"
           rm /tmp/laps.env
-
-      - name: Ensure PostgreSQL is installed and configured on EC2
-        run: |
-          cat > /tmp/db_setup.sh << 'EOF'
-          #!/bin/bash
-          set -e
-          DB_USER="${{ secrets.DB_USERNAME }}"
-          DB_PASS="${{ secrets.DB_PASSWORD }}"
-          DB_NAME="lapsdb"
-
-          if ! command -v psql &> /dev/null; then
-            echo "PostgreSQL not found, installing..."
-            sudo dnf install -y postgresql15-server
-            sudo postgresql-setup --initdb
-            echo "PostgreSQL installed."
-          else
-            echo "PostgreSQL already installed."
-          fi
-
-          PG_HBA=$(sudo find /var/lib/pgsql -name pg_hba.conf 2>/dev/null | head -1)
-          sudo sed -i 's/^\(local\s\+all\s\+all\s\+\)ident/\1md5/' "$PG_HBA"
-          sudo sed -i 's/^\(host\s\+all\s\+all\s\+127\.0\.0\.1\/32\s\+\)ident/\1md5/' "$PG_HBA"
-          sudo sed -i 's/^\(host\s\+all\s\+all\s\+::1\/128\s\+\)ident/\1md5/' "$PG_HBA"
-
-          sudo systemctl enable postgresql
-          sudo systemctl restart postgresql
-
-          sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='${DB_USER}'" | grep -q 1 \
-            || sudo -u postgres psql -c "CREATE USER \"${DB_USER}\" WITH PASSWORD '${DB_PASS}';"
-          sudo -u postgres psql -c "ALTER USER \"${DB_USER}\" WITH PASSWORD '${DB_PASS}';"
-
-          sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" | grep -q 1 \
-            || sudo -u postgres psql -c "CREATE DATABASE \"${DB_NAME}\" OWNER \"${DB_USER}\";"
-
-          echo "Database setup complete: ${DB_NAME}"
-          EOF
-          sed -i 's/^[[:space:]]*//' /tmp/db_setup.sh
-          scp /tmp/db_setup.sh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/db_setup.sh
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "bash /tmp/db_setup.sh && rm /tmp/db_setup.sh"
-          rm /tmp/db_setup.sh
 
       - name: Generate TLS certificate on EC2
         run: |
