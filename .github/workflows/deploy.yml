@@ -6,6 +6,10 @@ on:
     types: [ completed ]
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      image_sha:
+        description: 'Git SHA of the ECR image to deploy (must already be pushed by CI)'
+        required: true
 
 concurrency:
   group: deploy-ec2
@@ -34,17 +38,23 @@ jobs:
 
       - name: Resolve ECR repository URL and image SHA
         id: image
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          DISPATCH_SHA: ${{ inputs.image_sha }}
         run: |
           # Derive the ECR URL from the AWS account ID and region — no Terraform output needed at deploy time
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          ECR_URL="${ACCOUNT_ID}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/laps"
+          ECR_URL="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/laps"
           echo "ecr_url=${ECR_URL}" >> "$GITHUB_OUTPUT"
 
-          # Use the SHA from the CI run that triggered this deploy, or HEAD for manual dispatch
-          if [ "${{ github.event_name }}" = "workflow_run" ]; then
-            SHA="${{ github.event.workflow_run.head_sha }}"
+          # workflow_run: use SHA from the CI run that built the image
+          # workflow_dispatch: use the explicitly provided image_sha input
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            SHA="$WORKFLOW_RUN_SHA"
           else
-            SHA="${{ github.sha }}"
+            SHA="$DISPATCH_SHA"
           fi
           echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
           echo "image=${ECR_URL}:${SHA}" >> "$GITHUB_OUTPUT"
