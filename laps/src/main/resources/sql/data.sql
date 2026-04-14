@@ -9,12 +9,14 @@ INSERT INTO leave_types (name, description, max_days_per_year, half_day_allowed,
 VALUES
     ('Annual', 'Annual leave entitlement based on designation', 21, false, true),
     ('Medical', 'Medical leave - certificate required for more than 2 consecutive days', 60, false, true),
-    ('Compensation', 'Compensation leave earned from overtime work (4 hrs = 0.5 day)', 36, true, true)
+    ('Compensation', 'Compensation leave earned from overtime work (4 hrs = 0.5 day)', 108, true, true)
 ON CONFLICT (name) DO NOTHING;
 
--- Compensation leave is capped at a maximum of 36 days. 
--- Employees can only work up to 12 hours a day; with a cap of 72 overtime hours a month, or 864 overtime hours in a year.
--- This works out to 864 / 24 = 36 days in a year that they can claim back compensation leave. 
+-- Compensation leave is capped at a maximum of 108 days. 
+-- Employees can only work up to 12 hours a day, or 4 overtime hours a day.
+-- There is a cap of 72 overtime hours a month. That means they can clock up to 9 days compensation leave.
+-- (4 hours overtime = 0.5 days compensation leave, 72 hours overtime = 9 days)
+-- This works out to 9 * 12 = 108 days in a year that they can claim back compensation leave. 
 
 -- ============================================================
 -- Singapore Public Holidays 2026
