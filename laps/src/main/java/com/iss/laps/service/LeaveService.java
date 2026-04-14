@@ -209,8 +209,8 @@ public class LeaveService {
 
     @Transactional
     public CompensationClaim claimCompensation(CompensationClaim claim, Employee employee) {
-        if (claim.getOvertimeHours() > 12) {
-            throw new IllegalArgumentException("Overtime hours cannot exceed 12 per day");
+        if (claim.getOvertimeHours() > 4) {
+            throw new IllegalArgumentException("Overtime hours cannot exceed 4 per day");
         }
         LocalDate overtimeDate = claim.getOvertimeDate();
         LocalDate startOfMonth = overtimeDate.withDayOfMonth(1);

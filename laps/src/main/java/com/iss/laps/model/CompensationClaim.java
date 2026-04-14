@@ -30,8 +30,8 @@ public class CompensationClaim {
 
     @Column(nullable = false)
     @Min(4)
-    @Max(12)
-    private int overtimeHours; // every 4 hours = 0.5 day; max 12 hours per day (closes #19)
+    @Max(4)
+    private int overtimeHours; // every 4 hours = 0.5 day; max 4 hours per day (closes #19)
 
     // Computed: overtimeHours / 4 * 0.5
     @Column(nullable = false)

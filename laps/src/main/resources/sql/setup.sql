@@ -107,7 +107,7 @@ CREATE TABLE compensation_claims (
     id                BIGSERIAL PRIMARY KEY,
     employee_id       BIGINT           NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
     overtime_date     DATE             NOT NULL,
-    overtime_hours    INTEGER          NOT NULL CHECK (overtime_hours >= 4 AND overtime_hours <= 12),
+    overtime_hours    INTEGER          NOT NULL CHECK (overtime_hours >= 4 AND overtime_hours <= 4),
     compensation_days DOUBLE PRECISION NOT NULL,
     status            VARCHAR(20)      NOT NULL DEFAULT 'PENDING'
                           CHECK (status IN ('PENDING','APPROVED','REJECTED')),
