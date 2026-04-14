@@ -1,4 +1,4 @@
-name: CI - Build, Test and Security Scan
+name: CI - Build, Test, Scan and Push to ECR
 
 on:
   pull_request:
@@ -94,7 +94,7 @@ jobs:
         with:
           name: laps-terraform-state
           path: infra/terraform
-          workflow: ci.yml
+          workflow: ci-build-test-push.yml
           branch: main
           search_artifacts: true
           if_no_artifact_found: ignore

@@ -1,8 +1,8 @@
-name: CD - Deploy to AWS EC2
+name: CD - Deploy to EC2 via Docker Compose
 
 on:
   workflow_run:
-    workflows: [ "CI - Build, Test and Security Scan" ]
+    workflows: [ "CI - Build, Test, Scan and Push to ECR" ]
     types: [ completed ]
     branches: [ main ]
   workflow_dispatch:
