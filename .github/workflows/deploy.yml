@@ -1,6 +1,8 @@
 name: CD - Deploy to AWS EC2
 
 on:
+  push:
+    branches: [ main ]
   workflow_dispatch:
   workflow_run:
     workflows: [ "CI - Build, Test and Security Scan" ]
@@ -15,7 +17,7 @@ jobs:
   deploy:
     name: Deploy to EC2
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
       actions: read
       contents: read
@@ -30,25 +32,25 @@ jobs:
           workflow: ci.yml
           run_id: ${{ github.event.workflow_run.id }}
 
-      - name: Checkout code (manual dispatch)
-        if: github.event_name == 'workflow_dispatch'
+      - name: Checkout code (push/manual)
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         uses: actions/checkout@v4
 
-      - name: Set up Java 17 (manual dispatch)
-        if: github.event_name == 'workflow_dispatch'
+      - name: Set up Java 17 (push/manual)
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: maven
 
-      - name: Build JAR (manual dispatch)
-        if: github.event_name == 'workflow_dispatch'
+      - name: Build JAR (push/manual)
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         working-directory: laps
         run: mvn -B package -DskipTests
 
-      - name: Prepare deploy dir (manual dispatch)
-        if: github.event_name == 'workflow_dispatch'
+      - name: Prepare deploy dir (push/manual)
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         run: |
           mkdir -p ./deploy
           cp laps/target/laps-*.jar ./deploy/
