@@ -59,8 +59,8 @@ public class CompensationClaim {
         if (this.status == null) {
             this.status = ClaimStatus.PENDING;
         }
-        // Calculate compensation days: every 4 hours = 0.5 day
-        this.compensationDays = (overtimeHours / 4) * 0.5;
+        // Calculate compensation days proportionally (floating-point: 1h=0.125, 4h=0.5)
+        this.compensationDays = (overtimeHours / 4.0) * 0.5;
     }
 
     public enum ClaimStatus {
