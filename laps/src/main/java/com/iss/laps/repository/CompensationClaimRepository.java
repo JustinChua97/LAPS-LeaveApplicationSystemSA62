@@ -36,7 +36,7 @@ public interface CompensationClaimRepository extends JpaRepository<CompensationC
            "WHERE cc.employee = :employee " +
            "AND cc.overtimeDate >= :startOfMonth " +
            "AND cc.overtimeDate <= :endOfMonth " +
-           "AND cc.status <> com.iss.laps.model.CompensationClaim.ClaimStatus.REJECTED")
+           "AND cc.status <> 'REJECTED'")
     int sumOvertimeHoursByEmployeeAndMonth(
             @Param("employee") Employee employee,
             @Param("startOfMonth") LocalDate startOfMonth,
