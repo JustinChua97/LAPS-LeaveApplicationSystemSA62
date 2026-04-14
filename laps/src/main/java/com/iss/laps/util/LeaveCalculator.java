@@ -81,9 +81,10 @@ public class LeaveCalculator {
 
     /**
      * Calculates compensation leave days from overtime hours.
-     * Every 4 hours = 0.5 day compensation.
+     * Every 4 hours = 0.5 day compensation; partial hours accrue proportionally
+     * (e.g. 1h = 0.125 day, 2h = 0.25 day, 3h = 0.375 day).
      */
     public double calculateCompensationDays(int overtimeHours) {
-        return (overtimeHours / 4) * 0.5;
+        return (overtimeHours / 4.0) * 0.5;
     }
 }
