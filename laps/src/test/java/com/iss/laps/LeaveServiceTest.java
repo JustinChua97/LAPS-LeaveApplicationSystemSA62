@@ -80,7 +80,7 @@ class LeaveServiceTest {
         when(leaveCalculator.areWorkingDays(any(), any(), any())).thenReturn(true);
         when(leaveCalculator.calculateAnnualLeaveDays(any(), any(), any())).thenReturn(3.0);
         when(leaveAppRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        doNothing().when(emailService).sendLeaveApplicationNotification(any());
+        doNothing().when(emailService).sendLeaveApplicationNotification(any(), eq(EmailService.NotificationType.APPLICATION));
 
         LeaveApplication result = leaveService.applyLeave(sampleApplication, employee);
 
@@ -115,7 +115,7 @@ class LeaveServiceTest {
         when(leaveAppRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(leaveEntitlementRepo.findByEmployeeAndLeaveTypeAndYear(any(), any(), anyInt()))
                 .thenReturn(Optional.empty());
-        doNothing().when(emailService).sendLeaveApprovalNotification(any());
+        doNothing().when(emailService).sendLeaveApplicationNotification(any(), eq(EmailService.NotificationType.APPROVAL));
 
         leaveService.approveLeave(10L, "Approved, enjoy!", manager);
 

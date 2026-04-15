@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>LAPS Notification</title>
+</head>
+<body>
+    <h2>LAPS Notification</h2>
+    <p>Hello <span th:text="${employee}">Employee</span>,</p>
+
+    <p>This is a general notification regarding your leave application.</p>
+
+    <p>You can check the system for more details:</p>
+    <a th:href="@{${appHost}}">Go to LAPS</a>
+</body>
+</html>

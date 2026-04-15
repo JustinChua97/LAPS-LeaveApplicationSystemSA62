@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Leave Application Notification</title>
+</head>
+<body>
+    <h2>New Leave Application Submitted</h2>
+    <p>Dear <span th:text="${manager}">Manager</span>,</p>
+
+    <p><span th:text="${employee}">Employee</span> has applied for leave:</p>
+    <ul>
+        <li>Type: <span th:text="${leaveType}">Annual Leave</span></li>
+        <li>Start Date: <span th:text="${startDate}">2026-04-15</span></li>
+        <li>End Date: <span th:text="${endDate}">2026-04-20</span></li>
+        <li>Reason: <span th:text="${reason}">Personal</span></li>
+    </ul>
+
+    <p>Please log in to the system to review and take action:</p>
+    <a th:href="@{${appHost}}">Go to LAPS</a>
+</body>
+</html>

@@ -52,7 +52,7 @@ public class LeaveService {
         // Notify manager
         if (employee.getManager() != null) {
             initEmailAssociations(saved);
-            emailService.sendLeaveApplicationNotification(saved);
+            emailService.sendLeaveApplicationNotification(saved, EmailService.NotificationType.APPLICATION);
         }
 
         return saved;
@@ -126,7 +126,7 @@ public class LeaveService {
         deductEntitlement(application, application.getEmployee());
 
         initEmailAssociations(application);
-        emailService.sendLeaveApprovalNotification(application);
+        emailService.sendLeaveApplicationNotification(application, EmailService.NotificationType.APPROVAL);
     }
 
     @Transactional
@@ -148,7 +148,7 @@ public class LeaveService {
         leaveAppRepo.save(application);
 
         initEmailAssociations(application);
-        emailService.sendLeaveRejectionNotification(application);
+        emailService.sendLeaveApplicationNotification(application, EmailService.NotificationType.REJECTION);
     }
 
     // =========== QUERIES ===========
