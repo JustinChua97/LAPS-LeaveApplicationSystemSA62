@@ -15,14 +15,14 @@ public class SessionRepository {
     private final Map<String, SessionInfo> sessions = new ConcurrentHashMap<>();
 
     public void registerSession(HttpSession session) {
-        sessions.put(session.getId(), new SessionInfo(session, Instant.now())); //sessionInfo object is created to allow more expansion of more inputs in the future like user-details etc.
+        sessions.put(session.getId(), new SessionInfo(session, Instant.now()));
         log.info("Session {} registered at {}", session.getId(), Instant.now());
     }
 
     public void invalidateExpiredSessions() {
         Instant now = Instant.now();
         sessions.values().removeIf(info -> {
-            boolean expired = now.isAfter(info.getCreated().plusSeconds(60)); // 1 min for testing.
+            boolean expired = now.isAfter(info.getCreated().plusSeconds(60)); // 1 min for testing
             if (expired) {
                 info.invalidate();
             }
@@ -31,13 +31,12 @@ public class SessionRepository {
     }
 
     public void removeSession(HttpSession session) {
-        session.invalidate(); // invalidate first then kick the session out. More efficient way of bypassing TomCat's internal session management.
-        sessions.remove(session.getId()); // clean up your repo
+        session.invalidate(); 
+        sessions.remove(session.getId());
         log.info("Session {} invalidated and removed at {}", session.getId(), Instant.now());
-        }
     }
 
-    @Slf4j
+        //SLF4J is not static, causing errors in Sessioninfo class.
     private static class SessionInfo {
         private final HttpSession session;
         private final Instant created;
@@ -53,10 +52,10 @@ public class SessionRepository {
 
         void invalidate() {
             try {
-                session.invalidate(); 
-                log.info("Session {} invalidated due to timeout at {}", session.getId(), Instant.now());
+                session.invalidate();
+                
             } catch (IllegalStateException e) {
-                log.debug("Session {} already invalidated by container", session.getId());
+                
             }
         }
     }
