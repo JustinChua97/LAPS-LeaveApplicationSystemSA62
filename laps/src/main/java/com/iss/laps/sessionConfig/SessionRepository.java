@@ -30,11 +30,10 @@ public class SessionRepository {
         });
     }
 
-    public void removeSession(String sessionId) {
-        SessionInfo info = sessions.remove(sessionId);
-        if (info != null) {
-            info.invalidate();
-            log.info("Session {} removed manually at {}", sessionId, Instant.now());
+    public void removeSession(HttpSession session) {
+        session.invalidate(); // invalidate first then kick the session out. More efficient way of bypassing TomCat's internal session management.
+        sessions.remove(session.getId()); // clean up your repo
+        log.info("Session {} invalidated and removed at {}", session.getId(), Instant.now());
         }
     }
 

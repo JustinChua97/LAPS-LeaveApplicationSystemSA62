@@ -14,7 +14,7 @@ public class CustomSessionListener implements HttpSessionListener {
 
     @Override
     public void sessionDestroyed(HttpSessionEvent session) {
-        sessionRepository.removeSession(session.getSession().getId());
+        sessionRepository.removeSession(session.getSession());
     }
 }
 
