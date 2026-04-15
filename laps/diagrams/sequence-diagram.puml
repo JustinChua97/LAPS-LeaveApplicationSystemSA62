@@ -1,7 +1,5 @@
-@startuml
-
+@startuml LAPS Sequence
 !theme plain
-
 autonumber
 
 actor "Employee" as User1
@@ -10,24 +8,45 @@ boundary ":LeavePortalUI" as View
 control ":EmployeeController" as Controller
 control ":ManagerController" as Controller2
 participant "LeaveService" as Service1
-entity "LeaveApplicationDomain" as Domain1
-entity "LeaveEntitlementDomain" as Domain2
+database "LeaveApplicationRepository" as Domain1
+database "LeaveEntitlementRepository" as Domain2
 
 == Phase: User Interface Interaction ==
-User1 -> View : dashboard()
+User1 -> View : Fills Leave Application Form
 
 == Phase: Web Request Routing ==
 View -> Controller : applyLeave()
 
 == Phase: Business Logic & Validation ==
 Controller -> Service1 : applyLeave(application, employee)
-Service1 -> User2 : getPendingApplicationsForManager()
-User2 -> View: dashboard()
+Service1 -> Domain1 : save(application)
+
+== Phase: Manager Review ==
+User2 -> View: Clicks pending leaves
 View -> Controller2 : viewPendingLeaves()
-Controller2 -> Service1 : approveLeave()
+Controller2 -> Service1 : getPendingApplicationsForManager(manager)
+Service1 -> Domain1 : findPendingByManager(manager)
+Domain1 --> Service1 : List<LeaveApplication>
+Service1 --> Controller2 : List<LeaveApplication>
+Controller2 --> View : Render Pending Leaves
 
-== Phase: Data Persistence ==
-Service1 -> Domain1 : approveLeave()
-Service1 -> Domain2 : updateEntitlement()
+User2 -> View : Clicks "Review" on a specific leave application
+View -> Controller2 : viewLeaveDetail()
+Controller2 -> Service1 : findById(id)
+Service1 -> Domain1 : findById(id)
+Controller2 -> Service1 : getSubordinateLeaveDuringPeriod(manager, startDate, endDate)
+Service1 -> Domain1 : findSubordinateLeaveDuringPeriod(manager, startDate, endDate)
+Domain1 --> Service1 : List<LeaveApplication>
+Service1 --> Controller2 : List<LeaveApplication>
+Controller2 --> View : Render Leave Detail
 
+== Phase: Data Persistence (Approval) ==
+User2 -> View : Clicks "Approve"
+View -> Controller2 : approveLeave()
+Controller2 -> Service1 : approveLeave(id, comment, manager)
+Service1 -> Domain1 : findById(id)
+Service1 -> Domain1 : save(application)
+Service1 -> Service1 : deductEntitlement(application, employee)
+Service1 -> Domain2 : findByEmployeeAndLeaveTypeAndYear(employee, leaveType, year)
+Service1 -> Domain2 : save(ent)
 @enduml
