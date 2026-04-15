@@ -1,7 +1,5 @@
 package com.iss.laps.service;
 
-package com.iss.laps.service;
-
 
 
 import lombok.RequiredArgsConstructor;
@@ -23,8 +21,8 @@ import com.iss.laps.model.LeaveApplication;
 @Slf4j
 public class EmailServiceRefactored {
 
-    private  JavaMailSender mailSender;
-    private  TemplateEngine templateEngine;
+    private final JavaMailSender mailSender;
+    private final TemplateEngine templateEngine;
 
     @Value("${spring.mail.username:noreply@laps.iss.edu.sg}")
     private String fromEmail;
@@ -168,8 +166,3 @@ public void sendNotification(LeaveApplication application, NotificationType type
         log.warn("Failed to send {} notification email", type, e);
     }
 }*/
-
-
- {
-    
-}
