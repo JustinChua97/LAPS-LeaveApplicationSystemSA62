@@ -1,7 +1,5 @@
 package com.iss.laps.service;
 
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -12,6 +10,8 @@ import org.thymeleaf.context.Context;
 
 import com.iss.laps.model.LeaveApplication;
 
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -121,49 +121,3 @@ public class EmailService {
         log.info("Email sent to {}: {}", to, subject);
     }
 }
-
-
-/*private List<String> resolveRecipients(NotificationType type, LeaveApplication application) {
-    List<String> recipients = new ArrayList<>();
-
-    switch (type) {
-        case APPLICATION:
-            if (application.getEmployee().getManager() != null) {
-                recipients.add(application.getEmployee().getManager().getEmail());
-            }
-            break;
-        case APPROVAL:
-        case REJECTION:
-            // Always notify the employee
-            recipients.add(application.getEmployee().getEmail());
-            // Also notify the manager if present
-            if (application.getEmployee().getManager() != null) {
-                recipients.add(application.getEmployee().getManager().getEmail());
-            }
-            break;
-        default:
-            break;
-    }
-
-    return recipients;
-}*/
-
-/*@Async
-public void sendNotification(LeaveApplication application, NotificationType type) {
-    try {
-        List<String> recipients = resolveRecipients(type, application);
-        if (recipients.isEmpty()) {
-            log.warn("No recipients found for notification type {}", type);
-            return;
-        }
-
-        String subject = buildSubject(type, application);
-        String body = buildBody(type, application);
-
-        for (String recipient : recipients) {
-            sendEmail(recipient, subject, body);
-        }
-    } catch (Exception e) {
-        log.warn("Failed to send {} notification email", type, e);
-    }
-}*/
