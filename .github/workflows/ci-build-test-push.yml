@@ -89,34 +89,57 @@ jobs:
           terraform_version: 1.13.5
           terraform_wrapper: false
 
-      - name: Restore Terraform state
-        uses: dawidd6/action-download-artifact@v6
-        with:
-          name: laps-terraform-state
-          path: infra/terraform
-          workflow: ci-build-test-push.yml
-          branch: main
-          search_artifacts: true
-          if_no_artifact_found: ignore
+      - name: Create S3 Terraform state bucket (idempotent)
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          BUCKET="laps-tfstate-${ACCOUNT_ID}"
+          aws s3 mb "s3://${BUCKET}" --region "${AWS_REGION}" 2>/dev/null || true
+          aws s3api put-public-access-block \
+            --bucket "${BUCKET}" \
+            --public-access-block-configuration \
+              "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true" \
+            2>/dev/null || true
+          aws s3api put-bucket-encryption \
+            --bucket "${BUCKET}" \
+            --server-side-encryption-configuration \
+              '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}' \
+            2>/dev/null || true
+          echo "TF_STATE_BUCKET=${BUCKET}" >> "$GITHUB_ENV"
 
-      - name: Terraform init, fmt-check, validate, apply
+      - name: Terraform init, fmt-check, validate
         working-directory: infra/terraform
         env:
           TF_VAR_aws_region: ${{ vars.AWS_REGION }}
         run: |
-          terraform init -backend=false
+          terraform init \
+            -backend-config="bucket=${TF_STATE_BUCKET}" \
+            -backend-config="region=${TF_VAR_aws_region}"
           terraform fmt -check -recursive
           terraform validate
-          terraform apply -auto-approve
 
-      - name: Save Terraform state
-        uses: actions/upload-artifact@v4
-        with:
-          name: laps-terraform-state
-          path: infra/terraform/terraform.tfstate
-          retention-days: 14
-          overwrite: true
-          if-no-files-found: error
+      - name: Import ECR repository if it exists outside state
+        working-directory: infra/terraform
+        env:
+          TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+        run: |
+          REPO_NAME="${TF_VAR_name_prefix:-laps}"
+          IN_STATE=$(terraform state list 2>/dev/null | grep -c "aws_ecr_repository.laps" || true)
+          IN_AWS=$(aws ecr describe-repositories --repository-names "${REPO_NAME}" \
+                     --query 'repositories[0].repositoryName' --output text 2>/dev/null || echo "")
+          if [ "${IN_STATE}" = "0" ] && [ "${IN_AWS}" = "${REPO_NAME}" ]; then
+            echo "ECR repo '${REPO_NAME}' exists in AWS but not in state — importing..."
+            terraform import aws_ecr_repository.laps "${REPO_NAME}"
+          else
+            echo "No import needed (IN_STATE=${IN_STATE}, IN_AWS=${IN_AWS})."
+          fi
+
+      - name: Terraform apply
+        working-directory: infra/terraform
+        env:
+          TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+        run: terraform apply -auto-approve
 
       - name: Read ECR repository URL
         id: ecr
