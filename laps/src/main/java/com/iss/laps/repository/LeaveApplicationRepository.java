@@ -5,6 +5,7 @@ import com.iss.laps.model.LeaveApplication;
 import com.iss.laps.model.LeaveStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -25,6 +26,14 @@ public interface LeaveApplicationRepository extends JpaRepository<LeaveApplicati
     // All leave for an employee (pageable)
     Page<LeaveApplication> findByEmployeeAndStatusNotOrderByAppliedDateDesc(
             Employee employee, LeaveStatus status, Pageable pageable);
+
+    // Leave applications by status (used by scheduled reminder job)
+    @EntityGraph(attributePaths = {"employee", "employee.manager", "leaveType"})
+    List<LeaveApplication> findByStatus(LeaveStatus status);
+
+    // Leave applications by statuses (used by scheduled reminder job)
+    @EntityGraph(attributePaths = {"employee", "employee.manager", "leaveType"})
+    List<LeaveApplication> findByStatusIn(List<LeaveStatus> statuses);
 
     // Pending applications for manager's subordinates
     @Query("SELECT la FROM LeaveApplication la WHERE la.employee.manager = :manager " +
