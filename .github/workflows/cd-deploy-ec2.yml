@@ -171,6 +171,9 @@ jobs:
             cd /opt/laps
             docker compose pull
             docker compose up -d --remove-orphans --wait --wait-timeout 180
+
+            # Reload nginx so it re-resolves the new laps-app container IP (fixes #48)
+            docker compose exec -T nginx nginx -s reload
           REMOTE
 
       - name: Print deployment summary
