@@ -84,6 +84,13 @@ public String applyLeave(@Valid @ModelAttribute("leaveApplication") LeaveApplica
                                 @RequestParam(defaultValue = "10") int size,
                                 Model model) {
         Employee employee = securityUtils.getCurrentEmployee();
+                // Validate pagination parameters (issue #45)
+            if (page < 0) {
+                 page = 0;
+            }
+            if (size != 10 && size != 20 && size != 25) {
+                size = 10;
+            }
         Pageable pageable = PageRequest.of(page, size);
         Page<LeaveApplication> leavePage = leaveService.getMyLeaveHistoryPaged(employee, pageable);
 
@@ -186,13 +193,21 @@ public String editLeaveForm(@PathVariable Long id, Model model) {
     }
 
     @PostMapping("/compensation/claim")
-    public String submitCompensationClaim(@ModelAttribute("claim") CompensationClaim claim,
+    public String submitCompensationClaim(@Valid @ModelAttribute("claim") CompensationClaim claim,
+                                           BindingResult result,
+                                           Model model,
                                            RedirectAttributes redirectAttrs) {
+        if (result.hasErrors()) {
+            Employee employee = securityUtils.getCurrentEmployee();
+            model.addAttribute("myClaims", leaveService.getMyCompensationClaims(employee));
+            model.addAttribute("today", LocalDate.now());
+            return "employee/compensation-claim";
+        }
         Employee employee = securityUtils.getCurrentEmployee();
         try {
             leaveService.claimCompensation(claim, employee);
             redirectAttrs.addFlashAttribute("success", "Compensation claim submitted.");
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             redirectAttrs.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/employee/compensation/claim";

@@ -80,7 +80,7 @@ class LeaveServiceTest {
         when(leaveCalculator.areWorkingDays(any(), any(), any())).thenReturn(true);
         when(leaveCalculator.calculateAnnualLeaveDays(any(), any(), any())).thenReturn(3.0);
         when(leaveAppRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        doNothing().when(emailService).sendLeaveApplicationNotification(any());
+        doNothing().when(emailService).sendLeaveApplicationNotification(any(), eq(EmailService.NotificationType.APPLICATION));
 
         LeaveApplication result = leaveService.applyLeave(sampleApplication, employee);
 
@@ -115,7 +115,7 @@ class LeaveServiceTest {
         when(leaveAppRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(leaveEntitlementRepo.findByEmployeeAndLeaveTypeAndYear(any(), any(), anyInt()))
                 .thenReturn(Optional.empty());
-        doNothing().when(emailService).sendLeaveApprovalNotification(any());
+        doNothing().when(emailService).sendLeaveApplicationNotification(any(), eq(EmailService.NotificationType.APPROVAL));
 
         leaveService.approveLeave(10L, "Approved, enjoy!", manager);
 
@@ -194,5 +194,104 @@ class LeaveServiceTest {
         assertThatThrownBy(() -> leaveService.deleteLeave(10L, employee))
                 .isInstanceOf(LeaveApplicationException.class)
                 .hasMessageContaining("cannot be deleted");
+    }
+
+    // =========== COMPENSATION CLAIM — overtime cap + monthly limit (issue #19) ===========
+
+    @Test
+    @DisplayName("claimCompensation: overtime hours above 4 throws IllegalArgumentException")
+    void claimCompensation_overtimeHoursExceedsMax_throwsException() {
+        CompensationClaim claim = new CompensationClaim();
+        claim.setOvertimeDate(LocalDate.of(2026, 4, 10));
+        claim.setOvertimeHours(5);
+
+        assertThatThrownBy(() -> leaveService.claimCompensation(claim, employee))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot exceed 4");
+    }
+
+    @Test
+    @DisplayName("claimCompensation: exactly 4 overtime hours is accepted")
+    void claimCompensation_overtimeHoursAtMax_succeeds() {
+        CompensationClaim claim = new CompensationClaim();
+        claim.setOvertimeDate(LocalDate.of(2026, 4, 10));
+        claim.setOvertimeHours(4);
+        when(compClaimRepo.sumOvertimeHoursByEmployeeAndMonth(any(), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(0);
+        when(leaveCalculator.calculateCompensationDays(4)).thenReturn(0.5);
+        when(compClaimRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        CompensationClaim result = leaveService.claimCompensation(claim, employee);
+
+        assertThat(result.getEmployee()).isEqualTo(employee);
+        assertThat(result.getStatus()).isEqualTo(CompensationClaim.ClaimStatus.PENDING);
+        verify(compClaimRepo).save(any(CompensationClaim.class));
+    }
+
+    @Test
+    @DisplayName("claimCompensation: minimum 1 overtime hour is accepted")
+    void claimCompensation_overtimeHoursAtMin_succeeds() {
+        CompensationClaim claim = new CompensationClaim();
+        claim.setOvertimeDate(LocalDate.of(2026, 4, 10));
+        claim.setOvertimeHours(1);
+        when(compClaimRepo.sumOvertimeHoursByEmployeeAndMonth(any(), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(0);
+        when(leaveCalculator.calculateCompensationDays(1)).thenReturn(0.125);
+        when(compClaimRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        CompensationClaim result = leaveService.claimCompensation(claim, employee);
+
+        assertThat(result.getEmployee()).isEqualTo(employee);
+        assertThat(result.getStatus()).isEqualTo(CompensationClaim.ClaimStatus.PENDING);
+        verify(compClaimRepo).save(any(CompensationClaim.class));
+    }
+
+    @Test
+    @DisplayName("claimCompensation: monthly hours + new claim exceeding 72h throws exception")
+    void claimCompensation_monthlyCapExceeded_throwsException() {
+        CompensationClaim claim = new CompensationClaim();
+        claim.setOvertimeDate(LocalDate.of(2026, 4, 20));
+        claim.setOvertimeHours(4);
+        when(compClaimRepo.sumOvertimeHoursByEmployeeAndMonth(any(), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(70); // 70 + 4 = 74 > 72
+
+        assertThatThrownBy(() -> leaveService.claimCompensation(claim, employee))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("72 overtime hours");
+    }
+
+    @Test
+    @DisplayName("claimCompensation: monthly hours + new claim exactly at 72h succeeds")
+    void claimCompensation_monthlyCapAtLimit_succeeds() {
+        CompensationClaim claim = new CompensationClaim();
+        claim.setOvertimeDate(LocalDate.of(2026, 4, 20));
+        claim.setOvertimeHours(4);
+        when(compClaimRepo.sumOvertimeHoursByEmployeeAndMonth(any(), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(68); // 68 + 4 = 72 = limit
+        when(leaveCalculator.calculateCompensationDays(4)).thenReturn(0.5);
+        when(compClaimRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        CompensationClaim result = leaveService.claimCompensation(claim, employee);
+
+        assertThat(result.getEmployee()).isEqualTo(employee);
+        verify(compClaimRepo).save(any(CompensationClaim.class));
+    }
+
+    @Test
+    @DisplayName("claimCompensation: prior month at 72h does not block new month claim")
+    void claimCompensation_claimInNewMonth_ignoresPriorMonth() {
+        CompensationClaim claim = new CompensationClaim();
+        claim.setOvertimeDate(LocalDate.of(2026, 5, 1)); // May — different month
+        claim.setOvertimeHours(4);
+        // Repository returns 0 for May (prior 72h were in April)
+        when(compClaimRepo.sumOvertimeHoursByEmployeeAndMonth(any(), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(0);
+        when(leaveCalculator.calculateCompensationDays(4)).thenReturn(0.5);
+        when(compClaimRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        CompensationClaim result = leaveService.claimCompensation(claim, employee);
+
+        assertThat(result.getEmployee()).isEqualTo(employee);
+        verify(compClaimRepo).save(any(CompensationClaim.class));
     }
 }

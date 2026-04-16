@@ -1,6 +1,7 @@
 package com.iss.laps.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -28,8 +29,9 @@ public class CompensationClaim {
     private LocalDate overtimeDate;
 
     @Column(nullable = false)
-    @Min(4)
-    private int overtimeHours; // every 4 hours = 0.5 day
+    @Min(1)
+    @Max(4)
+    private int overtimeHours; // 1–4 hours per day; every 4h = 0.5 comp day (closes #19)
 
     // Computed: overtimeHours / 4 * 0.5
     @Column(nullable = false)
@@ -57,8 +59,8 @@ public class CompensationClaim {
         if (this.status == null) {
             this.status = ClaimStatus.PENDING;
         }
-        // Calculate compensation days: every 4 hours = 0.5 day
-        this.compensationDays = (overtimeHours / 4) * 0.5;
+        // Calculate compensation days proportionally (floating-point: 1h=0.125, 4h=0.5)
+        this.compensationDays = (overtimeHours / 4.0) * 0.5;
     }
 
     public enum ClaimStatus {

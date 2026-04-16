@@ -52,7 +52,7 @@ public class LeaveService {
         // Notify manager
         if (employee.getManager() != null) {
             initEmailAssociations(saved);
-            emailService.sendLeaveApplicationNotification(saved);
+            emailService.sendLeaveApplicationNotification(saved, EmailService.NotificationType.APPLICATION);
         }
 
         return saved;
@@ -126,7 +126,7 @@ public class LeaveService {
         deductEntitlement(application, application.getEmployee());
 
         initEmailAssociations(application);
-        emailService.sendLeaveApprovalNotification(application);
+        emailService.sendLeaveApplicationNotification(application, EmailService.NotificationType.APPROVAL);
     }
 
     @Transactional
@@ -148,7 +148,7 @@ public class LeaveService {
         leaveAppRepo.save(application);
 
         initEmailAssociations(application);
-        emailService.sendLeaveRejectionNotification(application);
+        emailService.sendLeaveApplicationNotification(application, EmailService.NotificationType.REJECTION);
     }
 
     // =========== QUERIES ===========
@@ -215,6 +215,18 @@ public List<PublicHoliday> getPublicHolidaysForYear(int year) {
 
     @Transactional
     public CompensationClaim claimCompensation(CompensationClaim claim, Employee employee) {
+        if (claim.getOvertimeHours() > 4) {
+            throw new IllegalArgumentException("Overtime hours cannot exceed 4 per day");
+        }
+        LocalDate overtimeDate = claim.getOvertimeDate();
+        LocalDate startOfMonth = overtimeDate.withDayOfMonth(1);
+        LocalDate endOfMonth   = overtimeDate.withDayOfMonth(overtimeDate.lengthOfMonth());
+        int monthlyHours = compClaimRepo.sumOvertimeHoursByEmployeeAndMonth(
+                employee, startOfMonth, endOfMonth);
+        if (monthlyHours + claim.getOvertimeHours() > 72) {
+            throw new IllegalArgumentException(
+                    "This claim would exceed the 72 overtime hours allowed per month (MOM limit)");
+        }
         claim.setEmployee(employee);
         double compDays = leaveCalculator.calculateCompensationDays(claim.getOvertimeHours());
         claim.setCompensationDays(compDays);

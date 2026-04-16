@@ -1,0 +1,57 @@
+name: IaC - Destroy AWS ECR Terraform
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: terraform-ec2
+  cancel-in-progress: false
+
+jobs:
+  destroy:
+    name: Destroy Terraform-managed ECR repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.5
+          terraform_wrapper: false
+
+      - name: Resolve S3 state bucket name
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "TF_STATE_BUCKET=laps-tfstate-${ACCOUNT_ID}" >> "$GITHUB_ENV"
+
+      - name: Terraform init, fmt-check, validate
+        working-directory: infra/terraform
+        env:
+          TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+        run: |
+          terraform init \
+            -backend-config="bucket=${TF_STATE_BUCKET}" \
+            -backend-config="region=${TF_VAR_aws_region}"
+          terraform fmt -check -recursive
+          terraform validate
+
+      - name: Destroy Terraform ECR infrastructure
+        working-directory: infra/terraform
+        env:
+          TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+        run: terraform destroy -auto-approve
