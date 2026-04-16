@@ -85,6 +85,13 @@ public class EmployeeController {
                                 @RequestParam(defaultValue = "10") int size,
                                 Model model) {
         Employee employee = securityUtils.getCurrentEmployee();
+                // Validate pagination parameters (issue #45)
+            if (page < 0) {
+                 page = 0;
+            }
+            if (size != 10 && size != 20 && size != 25) {
+                size = 10;
+            }
         Pageable pageable = PageRequest.of(page, size);
         Page<LeaveApplication> leavePage = leaveService.getMyLeaveHistoryPaged(employee, pageable);
 
