@@ -1,10 +1,12 @@
 -- Test seed data (H2-compatible — no ON CONFLICT syntax)
 -- Safe to use plain INSERT because ddl-auto=create-drop gives a fresh schema each run
 
-INSERT INTO leave_types (name, description, max_days_per_year, half_day_allowed, active) VALUES
-    ('Annual', 'Annual leave entitlement based on designation', 21, false, true),
-    ('Medical', 'Medical leave - certificate required for more than 2 consecutive days', 60, false, true),
-    ('Compensation', 'Compensation leave earned from overtime work (4 hrs = 0.5 day)', 999, true, true);
+INSERT INTO leave_types (name, description, max_days_per_year, half_day_allowed, active, default_type)
+VALUES
+    ('Annual', 'Annual leave entitlement based on designation', 21, false, true, 'ANNUAL'),
+    ('Medical', 'Medical leave - certificate required for more than 2 consecutive days', 14, false, true, 'MEDICAL'),
+    ('Hospitalisation', 'Hospitalisation leave - issued by the hospital. Maximum 46 days per year.', 46, false, true, 'HOSPITALISATION'),
+    ('Compensation', 'Compensation leave earned from overtime work (4 hrs = 0.5 day)', 108, true, true, 'COMPENSATION');
 
 INSERT INTO public_holidays (holiday_date, description, year) VALUES
     ('2026-01-01', 'New Year''s Day', 2026),

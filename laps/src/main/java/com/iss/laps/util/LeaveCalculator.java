@@ -1,14 +1,15 @@
 package com.iss.laps.util;
 
-import com.iss.laps.model.PublicHoliday;
-import org.springframework.stereotype.Component;
-
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
+
+import com.iss.laps.model.PublicHoliday;
 
 @Component
 public class LeaveCalculator {
@@ -39,15 +40,19 @@ public class LeaveCalculator {
         }
     }
 
-    /**
-     * Calculates medical leave days (excludes weekends only).
-     */
+    //Calculates medical leave days (excludes weekends only).
     public double calculateMedicalLeaveDays(LocalDate startDate, LocalDate endDate) {
         return startDate.datesUntil(endDate.plusDays(1))
                 .filter(date -> !isWeekend(date))
                 .count();
     }
 
+    //Calculates hospitalisation leave days (excludes weekends only).
+    public double calculateHospitalisationLeaveDays(LocalDate startDate, LocalDate endDate) {
+        return startDate.datesUntil(endDate.plusDays(1))
+                .filter(date -> !isWeekend(date))
+                .count();
+    }
     /**
      * Checks if a date is a weekend.
      */
@@ -86,5 +91,12 @@ public class LeaveCalculator {
      */
     public double calculateCompensationDays(int overtimeHours) {
         return (overtimeHours / 4.0) * 0.5;
+    }
+
+    //Calculates compensation leave days (excludes weekends only).
+    public double calculateCompensationLeaveDays(LocalDate startDate, LocalDate endDate) {
+        return startDate.datesUntil(endDate.plusDays(1))
+                .filter(date -> !isWeekend(date))
+                .count();
     }
 }

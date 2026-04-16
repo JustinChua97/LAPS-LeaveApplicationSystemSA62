@@ -1,22 +1,26 @@
 package com.iss.laps.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.NoArgsConstructor;
-import com.iss.laps.model.LeaveTypeDefaults;
+import lombok.Setter;
 
 @Entity
 @Table(name = "leave_types")
 @Getter @Setter @NoArgsConstructor
 public class LeaveType {
 
-    //Insert enum from LeaveTypeDefaults.java file
     @Enumerated(EnumType.STRING) 
-        //(EnumType.STRING) tells database to store the literal text instead of a numeric index.
-    @Column(name = "DefaultLeaveType", unique = true, updatable = false, nullable = false)
-    private LeaveTypeDefaults defaultLeaveType;
+    @Column(name = "default_type", unique = true, updatable = false, nullable = true)
+    private LeaveTypeDefault defaultType;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,12 +42,11 @@ public class LeaveType {
     @Column(nullable = false)
     private boolean active = true;
 
-    //add Enum to constructor
-    public LeaveType(String name, String description, int maxDaysPerYear, boolean halfDayAllowed, LeaveTypeDefaults defaultLeaveType) {
+        public void defaultLeaveType(String name, String description, int maxDaysPerYear, boolean halfDayAllowed, LeaveTypeDefault defaultType) {
         this.name = name;
         this.description = description;
         this.maxDaysPerYear = maxDaysPerYear;
         this.halfDayAllowed = halfDayAllowed;
-        this.defaultLeaveType = defaultLeaveType;
+        this.defaultType = defaultType;
     }
 }

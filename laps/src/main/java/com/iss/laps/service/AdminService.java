@@ -1,5 +1,6 @@
 package com.iss.laps.service;
 
+import com.iss.laps.exception.LeaveApplicationException;
 import com.iss.laps.exception.ResourceNotFoundException;
 import com.iss.laps.model.LeaveType;
 import com.iss.laps.model.PublicHoliday;

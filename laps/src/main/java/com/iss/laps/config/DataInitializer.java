@@ -1,9 +1,8 @@
 package com.iss.laps.config;
 
-import com.iss.laps.model.*;
-import com.iss.laps.repository.*;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDate;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -11,10 +10,21 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
+import com.iss.laps.model.Designation;
+import com.iss.laps.model.Employee;
+import com.iss.laps.model.LeaveApplication;
+import com.iss.laps.model.LeaveEntitlement;
+import com.iss.laps.model.LeaveStatus;
+import com.iss.laps.model.LeaveType;
+import com.iss.laps.model.LeaveTypeDefault;
+import com.iss.laps.model.Role;
+import com.iss.laps.repository.EmployeeRepository;
+import com.iss.laps.repository.LeaveApplicationRepository;
+import com.iss.laps.repository.LeaveEntitlementRepository;
+import com.iss.laps.repository.LeaveTypeRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Seeds test user accounts and leave entitlements at application startup.
@@ -46,9 +56,10 @@ public class DataInitializer implements ApplicationRunner {
         log.info("DataInitializer: seeding test accounts...");
 
         // Resolve leave types (inserted by data.sql)
-        LeaveType annualLeave  = findLeaveType("Annual");
-        LeaveType medicalLeave = findLeaveType("Medical");
-        LeaveType compLeave    = findLeaveType("Compensation");
+        LeaveType annualLeave = findByDefaultType(LeaveTypeDefault.ANNUAL);
+        LeaveType medicalLeave = findByDefaultType(LeaveTypeDefault.MEDICAL);
+        LeaveType hospitalisationLeave = findByDefaultType(LeaveTypeDefault.HOSPITALISATION);
+        LeaveType compensationLeave = findByDefaultType(LeaveTypeDefault.COMPENSATION);
 
         // ---- Admin ----
         Employee admin = save(new Employee(
@@ -99,13 +110,13 @@ public class DataInitializer implements ApplicationRunner {
 
         // ---- Leave Entitlements 2026 ----
         int year = 2026;
-        seedEntitlements(empTan,   annualLeave, medicalLeave, compLeave, 14, year);
-        seedEntitlements(empKumar, annualLeave, medicalLeave, compLeave, 18, year);
-        seedEntitlements(empAli,   annualLeave, medicalLeave, compLeave, 14, year);
-        seedEntitlements(empSarah, annualLeave, medicalLeave, compLeave, 18, year);
-        seedEntitlements(mgrChen,  annualLeave, medicalLeave, compLeave, 18, year);
-        seedEntitlements(mgrLim,   annualLeave, medicalLeave, compLeave, 21, year);
-        seedEntitlements(admin,    annualLeave, medicalLeave, compLeave, 14, year);
+        seedEntitlements(empTan,   annualLeave, medicalLeave, hospitalisationLeave, compensationLeave, 14, year);
+        seedEntitlements(empKumar, annualLeave, medicalLeave, hospitalisationLeave, compensationLeave, 18, year);
+        seedEntitlements(empAli,   annualLeave, medicalLeave, hospitalisationLeave, compensationLeave, 14, year);
+        seedEntitlements(empSarah, annualLeave, medicalLeave, hospitalisationLeave, compensationLeave, 18, year);
+        seedEntitlements(mgrChen,  annualLeave, medicalLeave, hospitalisationLeave, compensationLeave, 18, year);
+        seedEntitlements(mgrLim,   annualLeave, medicalLeave, hospitalisationLeave, compensationLeave, 21, year);
+        seedEntitlements(admin,    annualLeave, medicalLeave, hospitalisationLeave, compensationLeave, 14, year);
 
         // ---- Sample leave applications ----
         seedSampleLeave(empTan, annualLeave, mgrChen);
@@ -130,11 +141,12 @@ public class DataInitializer implements ApplicationRunner {
                         "Leave type '" + name + "' not found. Check data.sql."));
     }
 
-    private void seedEntitlements(Employee employee, LeaveType annual, LeaveType medical,
-                                   LeaveType comp, double annualDays, int year) {
+    private void seedEntitlements(Employee employee, LeaveType annual, LeaveType medical, LeaveType hospitalisation,
+                                   LeaveType compensation, double annualDays, int year) {
         saveEntitlement(employee, annual,  year, annualDays);
-        saveEntitlement(employee, medical, year, 60);
-        saveEntitlement(employee, comp,    year, 0);
+        saveEntitlement(employee, medical, year, 14);
+        saveEntitlement(employee, hospitalisation, year, 46);
+        saveEntitlement(employee, compensation,    year, 0);
     }
 
     private void saveEntitlement(Employee employee, LeaveType leaveType, int year, double days) {
@@ -159,5 +171,11 @@ public class DataInitializer implements ApplicationRunner {
             la.setHalfDay(false);
             leaveApplicationRepository.save(la);
         }
+    }
+
+    private LeaveType findByDefaultType(LeaveTypeDefault defaultType) {
+    return leaveTypeRepository.findByDefaultType(defaultType)
+        .orElseThrow(() -> new IllegalStateException(
+        "Missing seed leave type: " + defaultType));
     }
 }

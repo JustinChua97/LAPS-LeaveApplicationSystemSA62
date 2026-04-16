@@ -1,6 +1,6 @@
 package com.iss.laps.model;
 
-public enum LeaveTypeDefaults {
+public enum LeaveTypeDefault {
     ANNUAL,
     MEDICAL,
     HOSPITALISATION,

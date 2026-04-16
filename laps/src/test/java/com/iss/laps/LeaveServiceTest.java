@@ -1,26 +1,44 @@
 package com.iss.laps;
 
-import com.iss.laps.exception.LeaveApplicationException;
-import com.iss.laps.model.*;
-import com.iss.laps.repository.*;
-import com.iss.laps.service.EmailService;
-import com.iss.laps.service.LeaveService;
-import com.iss.laps.util.LeaveCalculator;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.iss.laps.exception.LeaveApplicationException;
+import com.iss.laps.model.CompensationClaim;
+import com.iss.laps.model.Designation;
+import com.iss.laps.model.Employee;
+import com.iss.laps.model.LeaveApplication;
+import com.iss.laps.model.LeaveEntitlement;
+import com.iss.laps.model.LeaveStatus;
+import com.iss.laps.model.LeaveType;
+import com.iss.laps.model.LeaveTypeDefault;
+import com.iss.laps.repository.CompensationClaimRepository;
+import com.iss.laps.repository.LeaveApplicationRepository;
+import com.iss.laps.repository.LeaveEntitlementRepository;
+import com.iss.laps.repository.LeaveTypeRepository;
+import com.iss.laps.repository.PublicHolidayRepository;
+import com.iss.laps.service.EmailService;
+import com.iss.laps.service.LeaveService;
+import com.iss.laps.util.LeaveCalculator;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("LeaveService Unit Tests")
@@ -56,7 +74,12 @@ class LeaveServiceTest {
         employee.setDesignation(Designation.ADMINISTRATIVE);
         employee.setManager(manager);
 
-        annualLeaveType = new LeaveType("Annual", "Annual leave", 21, false);
+        annualLeaveType = new LeaveType();
+        annualLeaveType.setName("Annual");
+        annualLeaveType.setDescription("Annual leave");
+        annualLeaveType.setMaxDaysPerYear(21);
+        annualLeaveType.setHalfDayAllowed(true);
+        annualLeaveType.setDefaultType(LeaveTypeDefault.ANNUAL);
         annualLeaveType.setId(1L);
 
         sampleApplication = new LeaveApplication();
@@ -75,7 +98,7 @@ class LeaveServiceTest {
         when(publicHolidayRepo.findByYear(anyInt())).thenReturn(List.of());
         when(leaveEntitlementRepo.findByEmployeeAndLeaveTypeAndYear(any(), any(), anyInt()))
                 .thenReturn(Optional.of(entitlement));
-        when(leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(any(), anyLong(), anyInt()))
+        when(leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(any(), anyLong(), anyInt(), isNull()))
                 .thenReturn(0.0);
         when(leaveCalculator.areWorkingDays(any(), any(), any())).thenReturn(true);
         when(leaveCalculator.calculateAnnualLeaveDays(any(), any(), any())).thenReturn(3.0);
