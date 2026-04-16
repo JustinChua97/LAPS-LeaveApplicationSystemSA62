@@ -56,6 +56,15 @@
                             </button>
                             <a th:href="@{/employee/leaves}" class="btn btn-outline-secondary">Cancel</a>
                         </div>
+                        <div class="mt-4">
+    <h6 class="fw-semibold">Public Holidays</h6>
+    <ul class="small text-muted">
+        <li th:each="holiday : ${publicHolidays}">
+            <span th:text="${holiday.holidayDate}"></span> -
+            <span th:text="${holiday.description}"></span>
+        </li>
+    </ul>
+</div>
                     </form>
                 </div>
             </div>

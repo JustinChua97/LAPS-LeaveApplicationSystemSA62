@@ -204,6 +204,12 @@ public class LeaveService {
     public List<LeaveApplication> getSubordinateLeaveDuringPeriod(Employee manager, LocalDate start, LocalDate end) {
         return leaveAppRepo.findSubordinateLeaveDuringPeriod(manager, start, end);
     }
+    // =========== HOLIDAY LOOKUP ===========
+
+public List<PublicHoliday> getPublicHolidaysForYear(int year) {
+    return publicHolidayRepo.findByYear(year);
+}
+
 
     // =========== COMPENSATION CLAIM ===========
 

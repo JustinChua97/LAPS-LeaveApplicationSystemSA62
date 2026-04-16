@@ -46,37 +46,36 @@ public class EmployeeController {
     // =========== LEAVE APPLICATION ===========
 
     @GetMapping("/leaves/apply")
-    public String applyLeaveForm(Model model) {
-        model.addAttribute("leaveApplication", new LeaveApplication());
-        model.addAttribute("leaveTypes", leaveService.getActiveLeaveTypes());
-        model.addAttribute("today", LocalDate.now());
+public String applyLeaveForm(Model model) {
+    model.addAttribute("leaveApplication", new LeaveApplication());
+    populateLeaveFormModel(model);   // handles leaveTypes, today, publicHolidays
+    return "employee/leave-apply";
+}
+    
+
+   @PostMapping("/leaves/apply")
+public String applyLeave(@Valid @ModelAttribute("leaveApplication") LeaveApplication application,
+                         BindingResult result,
+                         Model model,
+                         RedirectAttributes redirectAttrs) {
+    Employee employee = securityUtils.getCurrentEmployee();
+
+    if (result.hasErrors()) {
+        populateLeaveFormModel(model);
         return "employee/leave-apply";
     }
 
-    @PostMapping("/leaves/apply")
-    public String applyLeave(@Valid @ModelAttribute("leaveApplication") LeaveApplication application,
-                              BindingResult result,
-                              Model model,
-                              RedirectAttributes redirectAttrs) {
-        Employee employee = securityUtils.getCurrentEmployee();
-
-        if (result.hasErrors()) {
-            model.addAttribute("leaveTypes", leaveService.getActiveLeaveTypes());
-            model.addAttribute("today", LocalDate.now());
-            return "employee/leave-apply";
-        }
-
-        try {
-            leaveService.applyLeave(application, employee);
-            redirectAttrs.addFlashAttribute("success", "Leave application submitted successfully.");
-            return "redirect:/employee/leaves";
-        } catch (LeaveApplicationException e) {
-            model.addAttribute("error", e.getMessage());
-            model.addAttribute("leaveTypes", leaveService.getActiveLeaveTypes());
-            model.addAttribute("today", LocalDate.now());
-            return "employee/leave-apply";
-        }
+    try {
+        leaveService.applyLeave(application, employee);
+        redirectAttrs.addFlashAttribute("success", "Leave application submitted successfully.");
+        return "redirect:/employee/leaves";
+    } catch (LeaveApplicationException e) {
+        model.addAttribute("error", e.getMessage());
+        populateLeaveFormModel(model);
+        return "employee/leave-apply";
     }
+}
+
 
     // =========== LEAVE HISTORY ===========
 
@@ -108,20 +107,20 @@ public class EmployeeController {
 
     // =========== UPDATE LEAVE ===========
 
-    @GetMapping("/leaves/{id}/edit")
-    public String editLeaveForm(@PathVariable Long id, Model model) {
-        Employee employee = securityUtils.getCurrentEmployee();
-        LeaveApplication leave = leaveService.findByIdAndEmployee(id, employee);
+   @GetMapping("/leaves/{id}/edit")
+public String editLeaveForm(@PathVariable Long id, Model model) {
+    Employee employee = securityUtils.getCurrentEmployee();
+    LeaveApplication leave = leaveService.findByIdAndEmployee(id, employee);
 
-        if (!leave.isEditable()) {
-            return "redirect:/employee/leaves/" + id + "?error=Cannot+edit+this+leave";
-        }
-
-        model.addAttribute("leaveApplication", leave);
-        model.addAttribute("leaveTypes", leaveService.getActiveLeaveTypes());
-        model.addAttribute("today", LocalDate.now());
-        return "employee/leave-edit";
+    if (!leave.isEditable()) {
+        return "redirect:/employee/leaves/" + id + "?error=Cannot+edit+this+leave";
     }
+
+    model.addAttribute("leaveApplication", leave);
+    populateLeaveFormModel(model);
+    return "employee/leave-edit";
+}
+
 
     @PostMapping("/leaves/{id}/edit")
     public String updateLeave(@PathVariable Long id,
@@ -198,4 +197,13 @@ public class EmployeeController {
         }
         return "redirect:/employee/compensation/claim";
     }
+    // =========== PRIVATE HELPERS ===========
+
+private void populateLeaveFormModel(Model model) {
+    int year = LocalDate.now().getYear();
+    model.addAttribute("leaveTypes", leaveService.getActiveLeaveTypes());
+    model.addAttribute("today", LocalDate.now());
+    model.addAttribute("publicHolidays", leaveService.getPublicHolidaysForYear(year));
+}
+
 }
