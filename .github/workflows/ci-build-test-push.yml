@@ -1,0 +1,162 @@
+name: CI - Build, Test, Scan and Push to ECR
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    # No external services needed: tests run with the 'test' profile (H2 in-memory,
+    # hardcoded JWT secret and seed password). This makes CI deterministic and
+    # secrets-free so it works on fork PRs as well as direct pushes.
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build and test (H2 in-memory, no secrets required)
+        working-directory: laps
+        run: mvn -B verify -Dspring.profiles.active=test
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: laps/target/surefire-reports/
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: laps-jar
+          path: |
+            laps/target/laps-*.jar
+            !laps/target/*.jar.original
+          if-no-files-found: error
+          retention-days: 5
+
+  semgrep-sast:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Run Semgrep SAST scan
+        run: semgrep ci
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+  docker-push:
+    name: Build and push Docker image to ECR
+    runs-on: ubuntu-latest
+    # Push on merge to main; also allow manual workflow_dispatch for branch testing
+    if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch'
+    needs: [ build-and-test, semgrep-sast ]
+    permissions:
+      actions: read
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.13.5
+          terraform_wrapper: false
+
+      - name: Create S3 Terraform state bucket (idempotent)
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          BUCKET="laps-tfstate-${ACCOUNT_ID}"
+          aws s3 mb "s3://${BUCKET}" --region "${AWS_REGION}" 2>/dev/null || true
+          aws s3api put-public-access-block \
+            --bucket "${BUCKET}" \
+            --public-access-block-configuration \
+              "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true" \
+            2>/dev/null || true
+          aws s3api put-bucket-encryption \
+            --bucket "${BUCKET}" \
+            --server-side-encryption-configuration \
+              '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}' \
+            2>/dev/null || true
+          echo "TF_STATE_BUCKET=${BUCKET}" >> "$GITHUB_ENV"
+
+      - name: Terraform init, fmt-check, validate
+        working-directory: infra/terraform
+        env:
+          TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+        run: |
+          terraform init \
+            -backend-config="bucket=${TF_STATE_BUCKET}" \
+            -backend-config="region=${TF_VAR_aws_region}"
+          terraform fmt -check -recursive
+          terraform validate
+
+      - name: Import ECR repository if it exists outside state
+        working-directory: infra/terraform
+        env:
+          TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+        run: |
+          REPO_NAME="${TF_VAR_name_prefix:-laps}"
+          IN_STATE=$(terraform state list 2>/dev/null | grep -c "aws_ecr_repository.laps" || true)
+          IN_AWS=$(aws ecr describe-repositories --repository-names "${REPO_NAME}" \
+                     --query 'repositories[0].repositoryName' --output text 2>/dev/null || echo "")
+          if [ "${IN_STATE}" = "0" ] && [ "${IN_AWS}" = "${REPO_NAME}" ]; then
+            echo "ECR repo '${REPO_NAME}' exists in AWS but not in state — importing..."
+            terraform import aws_ecr_repository.laps "${REPO_NAME}"
+          else
+            echo "No import needed (IN_STATE=${IN_STATE}, IN_AWS=${IN_AWS})."
+          fi
+
+      - name: Terraform apply
+        working-directory: infra/terraform
+        env:
+          TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+        run: terraform apply -auto-approve
+
+      - name: Read ECR repository URL
+        id: ecr
+        working-directory: infra/terraform
+        run: echo "url=$(terraform output -raw ecr_repository_url)" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Amazon ECR
+        run: |
+          aws ecr get-login-password --region ${{ vars.AWS_REGION }} \
+            | docker login --username AWS --password-stdin ${{ steps.ecr.outputs.url }}
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --tag ${{ steps.ecr.outputs.url }}:${{ github.sha }} \
+            .
+
+      - name: Push Docker image to ECR
+        run: |
+          docker push ${{ steps.ecr.outputs.url }}:${{ github.sha }}

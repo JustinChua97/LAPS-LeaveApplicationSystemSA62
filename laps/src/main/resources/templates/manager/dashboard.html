@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{common/layout :: layout(~{::section})}">
+<body>
+<section th:fragment="content">
+    <div class="row mb-3">
+        <div class="col">
+            <h4><i class="bi bi-people"></i> Manager Dashboard</h4>
+            <p class="text-muted">Welcome, <strong th:text="${manager.name}">Manager</strong></p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card stat-card border-warning mb-3">
+                <div class="card-body text-center">
+                    <div class="fs-1 fw-bold text-warning" th:text="${pendingCount}">0</div>
+                    <div class="text-muted">Pending Leave Approvals</div>
+                    <a th:href="@{/manager/leaves}" class="btn btn-sm btn-warning mt-2">Review Now</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card border-info mb-3">
+                <div class="card-body text-center">
+                    <div class="fs-1 fw-bold text-info" th:text="${pendingClaimsCount}">0</div>
+                    <div class="text-muted">Pending Comp Claims</div>
+                    <a th:href="@{/manager/compensation}" class="btn btn-sm btn-info mt-2">Review</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card border-success mb-3">
+                <div class="card-body text-center">
+                    <div class="fs-1 fw-bold text-success"><i class="bi bi-bar-chart"></i></div>
+                    <div class="text-muted">Leave Reports</div>
+                    <a th:href="@{/manager/reports}" class="btn btn-sm btn-success mt-2">View Reports</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-hourglass-split"></i> Latest Pending Applications</span>
+            <a th:href="@{/manager/leaves}" class="btn btn-sm btn-outline-warning">View All</a>
+        </div>
+        <div class="card-body p-0">
+            <div th:if="${#lists.isEmpty(pendingLeaves)}" class="p-3 text-center text-muted">
+                No pending applications.
+            </div>
+            <table class="table table-hover table-sm mb-0" th:unless="${#lists.isEmpty(pendingLeaves)}">
+                <thead class="table-light">
+                    <tr><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th><th></th></tr>
+                </thead>
+                <tbody>
+                    <tr th:each="la : ${pendingLeaves}">
+                        <td th:text="${la.employee.name}"></td>
+                        <td th:text="${la.leaveType.name}"></td>
+                        <td th:text="${la.startDate}"></td>
+                        <td th:text="${la.endDate}"></td>
+                        <td th:text="${la.duration}"></td>
+                        <td><span class="badge badge-applied" th:text="${la.status}"></span></td>
+                        <td>
+                            <a th:href="@{'/manager/leaves/' + ${la.id}}"
+                               class="btn btn-sm btn-outline-primary">Review</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+</body>
+</html>

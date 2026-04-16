@@ -1,0 +1,77 @@
+@startuml LAPS Architecture Overview
+!theme plain
+skinparam classFontStyle Bold
+skinparam packageStyle rectangle
+skinparam packageBorderColor #888888
+skinparam classBackgroundColor #FAFAFA
+skinparam classBorderColor #AAAAAA
+skinparam arrowColor #555555
+skinparam packageBackgroundColor #F0F4FF
+title LAPS – Architecture Overview\n(see domain-model.puml / service-diagram.puml / controller-diagram.puml for detail)
+
+'─────────────────────────────────────────────────
+' LAYER: Models
+'─────────────────────────────────────────────────
+package "Domain Model" <<Rectangle>> {
+  class Employee
+  class LeaveApplication
+  class LeaveType
+  class LeaveEntitlement
+  class CompensationClaim
+  class PublicHoliday
+}
+
+'─────────────────────────────────────────────────
+' LAYER: Services & Utilities
+'─────────────────────────────────────────────────
+package "Service Layer" <<Rectangle>> {
+  class LeaveService
+  class EmployeeService
+  class AdminService
+  class EmailService
+  class LeaveCalculator
+  class SecurityUtils
+  class JwtService
+  class CustomUserDetailsService
+}
+
+'─────────────────────────────────────────────────
+' LAYER: Controllers (Web UI)
+'─────────────────────────────────────────────────
+package "Web Controllers" <<Rectangle>> {
+  class AuthController
+  class EmployeeController
+  class ManagerController
+  class AdminController
+  class MovementController
+}
+
+'─────────────────────────────────────────────────
+' LAYER: REST API
+'─────────────────────────────────────────────────
+package "REST API" <<Rectangle>> {
+  class LeaveRestController <<REST>>
+  class JwtAuthController <<REST>>
+}
+
+'─────────────────────────────────────────────────
+' INTER-LAYER DEPENDENCIES
+'─────────────────────────────────────────────────
+EmployeeController  ..> LeaveService
+EmployeeController  ..> EmployeeService
+ManagerController   ..> LeaveService
+ManagerController   ..> EmployeeService
+AdminController     ..> EmployeeService
+AdminController     ..> AdminService
+MovementController  ..> LeaveService
+LeaveRestController ..> LeaveService
+LeaveRestController ..> EmployeeService
+JwtAuthController   ..> JwtService
+
+LeaveService    ..> EmailService
+LeaveService    ..> LeaveCalculator
+EmployeeService ..> "Domain Model"
+AdminService    ..> "Domain Model"
+LeaveService    ..> "Domain Model"
+
+@enduml

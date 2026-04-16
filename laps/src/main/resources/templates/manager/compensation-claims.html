@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{common/layout :: layout(~{::section})}">
+<body>
+<section th:fragment="content">
+    <h4 class="mb-3"><i class="bi bi-clock-history"></i> Compensation Claims</h4>
+
+    <!-- Pending Claims -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-warning text-dark fw-semibold">
+            <i class="bi bi-hourglass-split"></i> Pending Claims
+            <span class="badge bg-dark ms-2" th:text="${pendingClaims.size()}"></span>
+        </div>
+        <div class="card-body p-0">
+            <div th:if="${#lists.isEmpty(pendingClaims)}" class="p-3 text-center text-muted">
+                No pending claims.
+            </div>
+            <table class="table table-hover table-sm mb-0" th:unless="${#lists.isEmpty(pendingClaims)}">
+                <thead class="table-light">
+                    <tr><th>Employee</th><th>Overtime Date</th><th>Hours</th><th>Comp Days</th><th>Reason</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                    <tr th:each="c : ${pendingClaims}">
+                        <td th:text="${c.employee.name}"></td>
+                        <td th:text="${c.overtimeDate}"></td>
+                        <td th:text="${c.overtimeHours}"></td>
+                        <td th:text="${c.compensationDays}"></td>
+                        <td class="small" th:text="${c.reason}"></td>
+                        <td>
+                            <div class="mb-1">
+                                <textarea th:id="'comment-' + ${c.id}" class="form-control form-control-sm"
+                                          rows="1" placeholder="Comment..."></textarea>
+                            </div>
+                            <div class="d-flex gap-1">
+                                <button type="button" class="btn btn-success btn-sm"
+                                        th:data-url="@{'/manager/compensation/' + ${c.id} + '/approve'}"
+                                        data-confirm="Approve this compensation claim?"
+                                        th:data-comment-field="'comment-' + ${c.id}"
+                                        onclick="confirmPostWithComment(this)">
+                                    <i class="bi bi-check"></i> Approve
+                                </button>
+                                <button type="button" class="btn btn-danger btn-sm"
+                                        th:data-url="@{'/manager/compensation/' + ${c.id} + '/reject'}"
+                                        data-confirm="Reject this claim? Comment is required."
+                                        th:data-comment-field="'comment-' + ${c.id}"
+                                        onclick="confirmPostWithComment(this)">
+                                    <i class="bi bi-x"></i> Reject
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- All Claims History -->
+    <div class="card shadow-sm">
+        <div class="card-header fw-semibold">All Claims History</div>
+        <div class="card-body p-0">
+            <div th:if="${#lists.isEmpty(allClaims)}" class="p-3 text-center text-muted">No claims found.</div>
+            <table class="table table-sm mb-0" th:unless="${#lists.isEmpty(allClaims)}">
+                <thead class="table-light">
+                    <tr><th>Employee</th><th>Date</th><th>Hours</th><th>Comp Days</th><th>Status</th><th>Comment</th></tr>
+                </thead>
+                <tbody>
+                    <tr th:each="c : ${allClaims}">
+                        <td th:text="${c.employee.name}"></td>
+                        <td th:text="${c.overtimeDate}"></td>
+                        <td th:text="${c.overtimeHours}"></td>
+                        <td th:text="${c.compensationDays}"></td>
+                        <td>
+                            <span class="badge"
+                                  th:classappend="${c.status.name() == 'APPROVED'} ? 'bg-success' : (${c.status.name() == 'REJECTED'} ? 'bg-danger' : 'badge-pending')"
+                                  th:text="${c.status}"></span>
+                        </td>
+                        <td class="small text-muted" th:text="${c.managerComment}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+</body>
+</html>

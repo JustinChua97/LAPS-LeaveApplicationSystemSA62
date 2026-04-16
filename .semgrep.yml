@@ -1,0 +1,13 @@
+rules: []
+
+# Semgrep SAST configuration for LAPS (Java Spring Boot)
+# Rules loaded from Semgrep Registry:
+#   p/java          - Java security best practices
+#   p/owasp-top-ten - OWASP Top 10 vulnerability patterns
+#   p/secrets       - Hardcoded secrets and credentials
+
+paths:
+  exclude:
+    - laps/src/test/
+    - laps/target/
+    - "**/*.xml"

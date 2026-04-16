@@ -1,0 +1,118 @@
+name: Issue Security Triage
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  check-security-fields:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Check trust boundary selection
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const body = context.payload.issue.body || '';
+            const issueNumber = context.issue.number;
+
+            // Check whether the issue was created from the feature_request template
+            // by looking for the trust boundaries section header
+            const isFeatureRequest = body.includes('Trust Boundaries Affected');
+            if (!isFeatureRequest) {
+              // Not a feature request template — skip triage
+              return;
+            }
+
+            const sectionText = (heading) => {
+              const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const pattern = new RegExp(`(^|\\n)#+\\s+${escaped}\\s*\\n([\\s\\S]*?)(?=\\n#+\\s+|$)`, 'i');
+              const match = body.match(pattern);
+              return match ? match[2].trim() : '';
+            };
+
+            const stripComments = (value) => value
+              .replace(/<!--[\s\S]*?-->/g, '')
+              .trim();
+
+            const threatSurface = stripComments(sectionText('Threat Surface'));
+            const inputOutputContracts = stripComments(sectionText('Input / Output Contracts'));
+
+            // GitHub renders checked checkboxes as "- [x]" and unchecked as "- [ ]".
+            // Limit the check to the trust-boundary section so unrelated task lists do not pass triage.
+            const trustBoundaries = sectionText('Trust Boundaries Affected');
+            const hasCheckedBoundary = /-\s*\[[xX]\]/.test(trustBoundaries);
+            const hasThreatSurface = threatSurface.length > 0 &&
+              !/^\s*(?:_?no response_?|none|n\/a)\s*$/i.test(threatSurface);
+            const hasValidationRequirements =
+              inputOutputContracts.length > 0 &&
+              /validation/i.test(inputOutputContracts) &&
+              /(server-side|server side|@valid|bindingresult|bean validation|reject|constraint|pattern|size|max length|required)/i.test(inputOutputContracts);
+
+            const failures = [];
+            if (!hasCheckedBoundary) {
+              failures.push('at least one checked **Trust Boundaries Affected** checkbox');
+            }
+            if (!hasThreatSurface) {
+              failures.push('a non-empty **Threat Surface** section');
+            }
+            if (!hasValidationRequirements) {
+              failures.push('explicit server-side validation requirements in **Input / Output Contracts**');
+            }
+
+            if (failures.length > 0) {
+              // Add blocking label
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                labels: ['blocked-missing-security-analysis']
+              });
+
+              // Remove backlog-candidate label if present (don't let it slip through)
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  name: 'backlog-candidate'
+                });
+              } catch (e) {
+                // Label may not exist — ignore
+              }
+
+              // Post a comment instructing the author to fix the issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: [
+                  '## :lock: Security Triage Required',
+                  '',
+                  'This issue is missing required security planning details:',
+                  '',
+                  ...failures.map((failure) => `- ${failure}`),
+                  '',
+                  'Please edit the issue before moving it into the sprint backlog.',
+                  '',
+                  'Refer to [REQUIREMENTS_TEMPLATE.md](../../blob/main/REQUIREMENTS_TEMPLATE.md) for guidance on completing the security fields.'
+                ].join('\n')
+              });
+
+              core.warning(`Issue #${issueNumber} failed security triage: ${failures.join(', ')}`);
+            } else {
+              // Required security planning fields are complete — remove blocking label if it exists.
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  name: 'blocked-missing-security-analysis'
+                });
+                core.info(`Issue #${issueNumber} now satisfies security triage — removed blocked-missing-security-analysis`);
+              } catch (e) {
+                // Label was not present — nothing to remove
+              }
+            }

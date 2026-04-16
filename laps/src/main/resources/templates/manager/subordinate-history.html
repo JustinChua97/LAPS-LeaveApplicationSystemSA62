@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{common/layout :: layout(~{::section})}">
+<body>
+<section th:fragment="content">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4><i class="bi bi-clock-history"></i> Subordinate Leave History</h4>
+        <div class="d-flex gap-2 align-items-center">
+            <span class="text-muted small">Rows:</span>
+            <a th:each="ps : ${pageSizes}"
+               th:href="@{/manager/subordinates/leaves(page=0,size=${ps})}"
+               class="btn btn-sm"
+               th:classappend="${ps == pageSize} ? 'btn-primary' : 'btn-outline-secondary'"
+               th:text="${ps}"></a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <div th:if="${leavePage.isEmpty()}" class="p-4 text-center text-muted">
+                No leave records found.
+            </div>
+            <table class="table table-hover table-sm mb-0" th:unless="${leavePage.isEmpty()}">
+                <thead class="table-light">
+                    <tr>
+                        <th>Employee</th><th>Type</th><th>From</th><th>To</th>
+                        <th>Days</th><th>Status</th><th>Applied</th><th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="la : ${leavePage.content}">
+                        <td th:text="${la.employee.name}"></td>
+                        <td th:text="${la.leaveType.name}"></td>
+                        <td th:text="${la.startDate}"></td>
+                        <td th:text="${la.endDate}"></td>
+                        <td><span class="duration-pill" th:text="${la.duration}"></span></td>
+                        <td>
+                            <span class="badge"
+                                  th:classappend="'badge-' + ${la.status.name().toLowerCase()}"
+                                  th:text="${la.status}"></span>
+                        </td>
+                        <td th:text="${#temporals.format(la.appliedDate,'dd MMM yyyy')}"></td>
+                        <td>
+                            <a th:href="@{'/manager/leaves/' + ${la.id}}"
+                               class="btn btn-sm btn-outline-primary">View</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer" th:unless="${leavePage.totalPages <= 1}">
+            <nav>
+                <ul class="pagination pagination-sm mb-0 justify-content-center">
+                    <li class="page-item" th:classappend="${leavePage.first} ? 'disabled'">
+                        <a class="page-link" th:href="@{/manager/subordinates/leaves(page=${leavePage.number - 1},size=${pageSize})}">&laquo;</a>
+                    </li>
+                    <li th:each="i : ${#numbers.sequence(0, leavePage.totalPages - 1)}"
+                        class="page-item" th:classappend="${i == leavePage.number} ? 'active'">
+                        <a class="page-link"
+                           th:href="@{/manager/subordinates/leaves(page=${i},size=${pageSize})}"
+                           th:text="${i + 1}"></a>
+                    </li>
+                    <li class="page-item" th:classappend="${leavePage.last} ? 'disabled'">
+                        <a class="page-link" th:href="@{/manager/subordinates/leaves(page=${leavePage.number + 1},size=${pageSize})}">&raquo;</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</section>
+</body>
+</html>

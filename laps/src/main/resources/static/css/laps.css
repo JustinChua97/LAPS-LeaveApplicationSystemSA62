@@ -1,0 +1,58 @@
+/* LAPS – Leave Application Processing System */
+
+body {
+    background-color: #f8f9fa;
+}
+
+.navbar-brand {
+    font-size: 1.3rem;
+    letter-spacing: 1px;
+}
+
+/* Status badge colours */
+.badge-applied   { background-color: #0d6efd; }
+.badge-updated   { background-color: #6f42c1; }
+.badge-approved  { background-color: #198754; }
+.badge-rejected  { background-color: #dc3545; }
+.badge-cancelled { background-color: #fd7e14; }
+.badge-deleted   { background-color: #6c757d; }
+.badge-pending   { background-color: #ffc107; color: #212529; }
+
+/* Card hover effect */
+.card-hover:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,.15);
+    transition: box-shadow .2s ease;
+}
+
+/* Dashboard stat cards */
+.stat-card {
+    border-left: 4px solid #0d6efd;
+}
+
+/* Table compact */
+.table-sm td, .table-sm th {
+    padding: .35rem .5rem;
+}
+
+/* Leave duration pill */
+.duration-pill {
+    font-size: .75rem;
+    padding: .2rem .5rem;
+    border-radius: 1rem;
+    background: #e9ecef;
+    font-weight: 600;
+}
+
+/* Pagination */
+.pagination .page-link {
+    color: #0d6efd;
+}
+.pagination .page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+/* Footer */
+.footer {
+    font-size: .85rem;
+}

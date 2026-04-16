@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{common/layout :: layout(~{::section})}">
+<body>
+<section th:fragment="content">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4><i class="bi bi-clock-history"></i> My Leave History</h4>
+        <a th:href="@{/employee/leaves/apply}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-circle"></i> Apply Leave
+        </a>
+    </div>
+
+    <!-- Page size selector -->
+    <div class="d-flex justify-content-end mb-2 align-items-center gap-2">
+        <span class="text-muted small">Rows per page:</span>
+        <div th:each="ps : ${pageSizes}">
+            <a th:href="@{/employee/leaves(page=0,size=${ps})}"
+               class="btn btn-sm"
+               th:classappend="${ps == pageSize} ? 'btn-primary' : 'btn-outline-secondary'"
+               th:text="${ps}"></a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <div th:if="${leavePage.isEmpty()}" class="p-4 text-center text-muted">
+                <i class="bi bi-inbox fs-1"></i>
+                <p class="mt-2">No leave applications found.</p>
+                <a th:href="@{/employee/leaves/apply}" class="btn btn-primary">Apply Now</a>
+            </div>
+
+            <table class="table table-hover mb-0" th:unless="${leavePage.isEmpty()}">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Leave Type</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Days</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Applied On</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="leave, stat : ${leavePage.content}">
+                        <td th:text="${leavePage.number * leavePage.size + stat.index + 1}"></td>
+                        <td th:text="${leave.leaveType.name}"></td>
+                        <td th:text="${leave.startDate}"></td>
+                        <td th:text="${leave.endDate}"></td>
+                        <td><span class="duration-pill" th:text="${leave.duration}"></span></td>
+                        <td class="text-truncate" style="max-width:150px;" th:text="${leave.reason}"></td>
+                        <td>
+                            <span class="badge"
+                                  th:classappend="'badge-' + ${leave.status.name().toLowerCase()}"
+                                  th:text="${leave.status}"></span>
+                        </td>
+                        <td th:text="${#temporals.format(leave.appliedDate,'dd MMM yyyy')}"></td>
+                        <td>
+                            <a th:href="@{'/employee/leaves/' + ${leave.id}}"
+                               class="btn btn-xs btn-outline-primary btn-sm">View</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="card-footer" th:unless="${leavePage.totalPages <= 1}">
+            <nav>
+                <ul class="pagination pagination-sm mb-0 justify-content-center">
+                    <li class="page-item" th:classappend="${leavePage.first} ? 'disabled'">
+                        <a class="page-link"
+                           th:href="@{/employee/leaves(page=${leavePage.number - 1},size=${pageSize})}">
+                            &laquo;
+                        </a>
+                    </li>
+                    <li class="page-item" th:each="i : ${#numbers.sequence(0, leavePage.totalPages - 1)}"
+                        th:classappend="${i == leavePage.number} ? 'active'">
+                        <a class="page-link"
+                           th:href="@{/employee/leaves(page=${i},size=${pageSize})}"
+                           th:text="${i + 1}"></a>
+                    </li>
+                    <li class="page-item" th:classappend="${leavePage.last} ? 'disabled'">
+                        <a class="page-link"
+                           th:href="@{/employee/leaves(page=${leavePage.number + 1},size=${pageSize})}">
+                            &raquo;
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</section>
+</body>
+</html>

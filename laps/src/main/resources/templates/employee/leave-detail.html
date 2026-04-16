@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{common/layout :: layout(~{::section})}">
+<body>
+<section th:fragment="content">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-file-earmark-text"></i> Leave Application Details</h5>
+                    <span class="badge fs-6"
+                          th:classappend="'badge-' + ${leave.status.name().toLowerCase()}"
+                          th:text="${leave.status}"></span>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Leave Type</dt>
+                        <dd class="col-sm-8" th:text="${leave.leaveType.name}"></dd>
+                        <dt class="col-sm-4">From Date</dt>
+                        <dd class="col-sm-8" th:text="${leave.startDate}"></dd>
+                        <dt class="col-sm-4">To Date</dt>
+                        <dd class="col-sm-8" th:text="${leave.endDate}"></dd>
+                        <dt class="col-sm-4">Duration</dt>
+                        <dd class="col-sm-8">
+                            <span class="duration-pill" th:text="${leave.duration} + ' day(s)'"></span>
+                            <span th:if="${leave.halfDay}" class="badge bg-info ms-1">Half Day</span>
+                        </dd>
+                        <dt class="col-sm-4">Reason</dt>
+                        <dd class="col-sm-8" th:text="${leave.reason}"></dd>
+                        <dt class="col-sm-4" th:if="${leave.workDissemination != null}">Work Dissemination</dt>
+                        <dd class="col-sm-8" th:if="${leave.workDissemination != null}"
+                            th:text="${leave.workDissemination}"></dd>
+                        <dt class="col-sm-4" th:if="${leave.contactDetails != null}">Contact Details</dt>
+                        <dd class="col-sm-8" th:if="${leave.contactDetails != null}"
+                            th:text="${leave.contactDetails}"></dd>
+                        <dt class="col-sm-4">Applied On</dt>
+                        <dd class="col-sm-8"
+                            th:text="${#temporals.format(leave.appliedDate,'dd MMM yyyy HH:mm')}"></dd>
+                        <dt class="col-sm-4" th:if="${leave.managerComment != null}">Manager Comment</dt>
+                        <dd class="col-sm-8 text-danger" th:if="${leave.managerComment != null}"
+                            th:text="${leave.managerComment}"></dd>
+                    </dl>
+                </div>
+                <div class="card-footer d-flex gap-2">
+                    <a th:href="@{/employee/leaves}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Back
+                    </a>
+                    <a th:if="${leave.editable}"
+                       th:href="@{'/employee/leaves/' + ${leave.id} + '/edit'}"
+                       class="btn btn-warning">
+                        <i class="bi bi-pencil"></i> Update
+                    </a>
+                    <!-- Cancel and Delete use JS POST (CSRF via meta tag) to avoid false-positive lint rules -->
+                    <button th:if="${leave.cancellable}" type="button" class="btn btn-warning"
+                            th:data-url="@{'/employee/leaves/' + ${leave.id} + '/cancel'}"
+                            data-confirm="Cancel this approved leave?"
+                            onclick="confirmPost(this)">
+                        <i class="bi bi-x-circle"></i> Cancel Leave
+                    </button>
+                    <button th:if="${leave.deletable}" type="button" class="btn btn-danger"
+                            th:data-url="@{'/employee/leaves/' + ${leave.id} + '/delete'}"
+                            data-confirm="Delete this leave application? This cannot be undone."
+                            onclick="confirmPost(this)">
+                        <i class="bi bi-trash"></i> Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+</body>
+</html>
