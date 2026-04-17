@@ -3,33 +3,24 @@ package com.iss.laps.config;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.annotation.Order;
-import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 import com.iss.laps.security.JwtAuthenticationFilter;
 
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
-
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -41,6 +32,7 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+    // prevent spring boot from auto registering JwtAuthenticationFilter as a servlet filter
     @Bean
     public FilterRegistrationBean<JwtAuthenticationFilter> jwtAuthenticationFilterRegistration(
             JwtAuthenticationFilter filter) {
@@ -50,65 +42,21 @@ public class SecurityConfig {
     }
 
     /**
-     * API filter chain — applies to all /api/** requests.
-     *
-     * Security properties (issue #6):
-     * - STATELESS session: no HttpSession created or used (ASVS V3.5.2)
-     * - CSRF disabled: safe because no cookies are used for auth on this chain
-     * - 401 JSON entry point: never redirects to /login (ASVS V13.1.3)
-     * - JwtAuthenticationFilter validates Bearer tokens before Spring's auth filter
-     * - /api/v1/auth/token is the only path permitted without a token
+     * Single filter chain for both Thymeleaf pages and /api/  endpoints.
+     * Angular uses the same session cookie (JSESSIONID) as the Thymeleaf UI to make it simple.
+     * API calls return 401 JSON instead of redirecting to /login.
      */
     @Bean
-    @Order(1)
-    public SecurityFilterChain apiFilterChain(HttpSecurity http) throws Exception {
-        http
-            .securityMatcher("/api/**")
-            .csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                // Public endpoint for token issuance
-                .requestMatchers("/api/v1/auth/token").permitAll()
-
-                // Role-based API endpoints
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/manager/**").hasAnyRole("MANAGER", "ADMIN")
-                .requestMatchers("/api/employee/**").hasAnyRole("EMPLOYEE", "MANAGER", "ADMIN")
-                .requestMatchers("/api/movement/**").authenticated()
-
-                // Catch-all: any other API request must be authenticated
-                .anyRequest().authenticated()
-            )
-            .exceptionHandling(ex -> ex
-                .authenticationEntryPoint((request, response, authException) -> {
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                    response.getWriter().write(
-                        "{\"error\":\"Unauthorized\",\"message\":\"Authentication failed\"}"
-                    );
-                })
-            )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
-        return http.build();
-    }
-
-    /**
-     * Web filter chain — applies to all non-API requests (Thymeleaf UI).
-     *
-     * This chain is intentionally unchanged from before issue #6:
-     * - CSRF remains enabled (CLAUDE.md security rule)
-     * - Form login and session management intact
-     * - Role-based path matchers intact
-     */
-    @Bean
-    @Order(2)
     public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
+                .requestMatchers("/app/**").permitAll()
                 .requestMatchers("/login", "/admin/login").permitAll()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/manager/**").hasAnyRole("MANAGER", "ADMIN")
+                .requestMatchers("/api/employee/**").hasAnyRole("EMPLOYEE", "MANAGER", "ADMIN")
+                .requestMatchers("/api/**").authenticated()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/manager/**").hasAnyRole("MANAGER")
                 .requestMatchers("/employee/**").hasAnyRole("EMPLOYEE", "MANAGER")
@@ -127,7 +75,7 @@ public class SecurityConfig {
                     } else if (role.equals("ROLE_MANAGER")) {
                         response.sendRedirect("/manager/dashboard");
                     } else {
-                        response.sendRedirect("/employee/dashboard");
+                        response.sendRedirect("/app");
                     }
                 })
                 .failureUrl("/login?error=true")
@@ -142,6 +90,16 @@ public class SecurityConfig {
             )
             .exceptionHandling(ex -> ex
                 .accessDeniedPage("/access-denied")
+                .defaultAuthenticationEntryPointFor(
+                    (request, response, authException) -> {
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        response.setContentType("application/json");
+                        response.getWriter().write(
+                            "{\"error\":\"Unauthorized\",\"message\":\"Authentication failed\"}"
+                        );
+                    },
+                    new AntPathRequestMatcher("/api/**")
+                )
             );
 
         return http.build();

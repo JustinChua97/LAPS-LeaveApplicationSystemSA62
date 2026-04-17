@@ -1,0 +1,141 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="/app">
+      <i class="bi bi-calendar-check"></i> LAPS
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navMenu">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+          <a class="nav-link active" href="/app">
+            <i class="bi bi-house"></i> My Dashboard
+          </a>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+            <i class="bi bi-file-earmark-text"></i> Leave
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="/employee/leaves/apply">Apply Leave</a></li>
+            <li><a class="dropdown-item" href="/employee/leaves">My Leave History</a></li>
+            <li><a class="dropdown-item" href="/employee/compensation/claim">Compensation Claim</a></li>
+          </ul>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/movement">
+            <i class="bi bi-calendar3"></i> Movement Register
+          </a>
+        </li>
+      </ul>
+      <ul class="navbar-nav">
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+            <i class="bi bi-person-circle"></i> {{ fullName }}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+              <a class="dropdown-item text-danger" href="/logout">
+                <i class="bi bi-box-arrow-right"></i> Logout
+              </a>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container mt-4">
+
+  @if (loading()) {
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary"></div>
+      <p class="mt-2 text-muted">Loading...</p>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="alert alert-danger">{{ error() }}</div>
+  }
+
+  @if (!loading() && !error()) {
+
+    <!-- Page header: title + welcome message + Apply Leave button -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+      <div>
+        <h4 class="mb-1"><i class="bi bi-house"></i> My Dashboard</h4>
+        <p class="text-muted mb-0">Welcome, <strong>{{ fullName }}</strong> ({{ designation }})</p>
+      </div>
+      <a href="/employee/leaves/apply" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Apply Leave
+      </a>
+    </div>
+
+    <h6 class="text-muted text-uppercase fw-bold mb-3">Leave Balance (Current Year)</h6>
+    <div class="row mb-4">
+      @for (ent of entitlements(); track ent.leaveType) {
+        <div class="col-md-4 mb-3">
+          <div class="card h-100 shadow-sm">
+            <div class="card-body">
+              <div class="text-muted small">{{ ent.leaveType }}</div>
+              <div class="fs-3 fw-bold">{{ ent.remainingDays }}</div>
+              <div class="text-muted small">days remaining of {{ ent.totalDays }}</div>
+              <div class="progress mt-2" style="height: 4px">
+                <div class="progress-bar"
+                     [style.width.%]="ent.totalDays > 0 ? (ent.usedDays / ent.totalDays * 100) : 0">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-clock-history"></i> Recent Leave Applications</span>
+        <a href="/employee/leaves" class="btn btn-sm btn-outline-secondary">View All</a>
+      </div>
+      <div class="card-body p-0">
+        @if (recentLeaves().length === 0) {
+          <p class="p-3 text-muted text-center">No leave applications yet.</p>
+        } @else {
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Type</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Days</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (leave of recentLeaves(); track leave.id) {
+                <tr>
+                  <td>{{ leave.leaveType }}</td>
+                  <td>{{ leave.startDate }}</td>
+                  <td>{{ leave.endDate }}</td>
+                  <td>{{ leave.duration }}</td>
+                  <td>
+                    <span class="badge" [ngClass]="'badge-' + leave.status.toLowerCase()">
+                      {{ leave.status }}
+                    </span>
+                  </td>
+                  <td>
+                    <a [href]="'/employee/leaves/' + leave.id" class="btn btn-sm btn-outline-secondary">View</a>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+    </div>
+
+  }
+
+</div>
