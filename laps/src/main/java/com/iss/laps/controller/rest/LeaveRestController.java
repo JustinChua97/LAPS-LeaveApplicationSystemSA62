@@ -59,8 +59,8 @@ public class LeaveRestController {
     /**
      * GET /api/v1/movement?year=&month= - Get movement register data
      */
-  @GetMapping("/movement")
-public ResponseEntity<Map<String, Object>> getMovement(
+    @GetMapping("/movement")
+    public ResponseEntity<Map<String, Object>> getMovement(
         @RequestParam(defaultValue = "0") int year,
         @RequestParam(defaultValue = "0") int month) {
     
