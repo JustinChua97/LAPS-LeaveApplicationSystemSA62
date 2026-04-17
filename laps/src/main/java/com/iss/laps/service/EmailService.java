@@ -48,6 +48,7 @@ public class EmailService {
 
             sendEmail(recipient, subject, body);
         } catch (Exception e) {
+            // @Async — failures are logged but must not abort the main transaction
             log.warn("Failed to send {} notification email", type, e);
         }
     }
@@ -91,7 +92,19 @@ public class EmailService {
         context.setVariable("reason", application.getReason());
         context.setVariable("comment", application.getManagerComment() != null ? application.getManagerComment() : "N/A");
         context.setVariable("appHost", appHost);
-
+        String LeaveUrl;
+        switch (type) {
+            case APPLICATION:
+                LeaveUrl = appHost + "/manager/leaves/" + application.getId();
+                break;
+            case APPROVAL:
+            case REJECTION:
+                LeaveUrl = appHost + "/employee/leaves/" + application.getId();
+                break;
+                default:
+                    LeaveUrl = appHost;
+        }
+        context.setVariable("leaveUrl", LeaveUrl);
         String templateName;
         switch (type) {
             case APPLICATION:
