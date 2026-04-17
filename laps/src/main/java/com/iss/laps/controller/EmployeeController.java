@@ -46,51 +46,49 @@ public class EmployeeController {
     // =========== LEAVE APPLICATION ===========
 
     @GetMapping("/leaves/apply")
-public String applyLeaveForm(Model model) {
-    model.addAttribute("leaveApplication", new LeaveApplication());
-    populateLeaveFormModel(model);   // handles leaveTypes, today, publicHolidays
-    return "employee/leave-apply";
-}
-    
-
-   @PostMapping("/leaves/apply")
-public String applyLeave(@Valid @ModelAttribute("leaveApplication") LeaveApplication application,
-                         BindingResult result,
-                         Model model,
-                         RedirectAttributes redirectAttrs) {
-    Employee employee = securityUtils.getCurrentEmployee();
-
-    if (result.hasErrors()) {
-        populateLeaveFormModel(model);
+    public String applyLeaveForm(Model model) {
+        model.addAttribute("leaveApplication", new LeaveApplication());
+        populateLeaveFormModel(model); // handles leaveTypes, today, publicHolidays
         return "employee/leave-apply";
     }
 
-    try {
-        leaveService.applyLeave(application, employee);
-        redirectAttrs.addFlashAttribute("success", "Leave application submitted successfully.");
-        return "redirect:/employee/leaves";
-    } catch (LeaveApplicationException e) {
-        model.addAttribute("error", e.getMessage());
-        populateLeaveFormModel(model);
-        return "employee/leave-apply";
-    }
-}
+    @PostMapping("/leaves/apply")
+    public String applyLeave(@Valid @ModelAttribute("leaveApplication") LeaveApplication application,
+            BindingResult result,
+            Model model,
+            RedirectAttributes redirectAttrs) {
+        Employee employee = securityUtils.getCurrentEmployee();
 
+        if (result.hasErrors()) {
+            populateLeaveFormModel(model);
+            return "employee/leave-apply";
+        }
+
+        try {
+            leaveService.applyLeave(application, employee);
+            redirectAttrs.addFlashAttribute("success", "Leave application submitted successfully.");
+            return "redirect:/employee/leaves";
+        } catch (LeaveApplicationException e) {
+            model.addAttribute("error", e.getMessage());
+            populateLeaveFormModel(model);
+            return "employee/leave-apply";
+        }
+    }
 
     // =========== LEAVE HISTORY ===========
 
     @GetMapping("/leaves")
     public String leaveHistory(@RequestParam(defaultValue = "0") int page,
-                                @RequestParam(defaultValue = "10") int size,
-                                Model model) {
+            @RequestParam(defaultValue = "10") int size,
+            Model model) {
         Employee employee = securityUtils.getCurrentEmployee();
-                // Validate pagination parameters (issue #45)
-            if (page < 0) {
-                 page = 0;
-            }
-            if (size != 10 && size != 20 && size != 25) {
-                size = 10;
-            }
+        // Validate pagination parameters (issue #45)
+        if (page < 0) {
+            page = 0;
+        }
+        if (size != 10 && size != 20 && size != 25) {
+            size = 10;
+        }
         Pageable pageable = PageRequest.of(page, size);
         Page<LeaveApplication> leavePage = leaveService.getMyLeaveHistoryPaged(employee, pageable);
 
@@ -114,27 +112,26 @@ public String applyLeave(@Valid @ModelAttribute("leaveApplication") LeaveApplica
 
     // =========== UPDATE LEAVE ===========
 
-   @GetMapping("/leaves/{id}/edit")
-public String editLeaveForm(@PathVariable Long id, Model model) {
-    Employee employee = securityUtils.getCurrentEmployee();
-    LeaveApplication leave = leaveService.findByIdAndEmployee(id, employee);
+    @GetMapping("/leaves/{id}/edit")
+    public String editLeaveForm(@PathVariable Long id, Model model) {
+        Employee employee = securityUtils.getCurrentEmployee();
+        LeaveApplication leave = leaveService.findByIdAndEmployee(id, employee);
 
-    if (!leave.isEditable()) {
-        return "redirect:/employee/leaves/" + id + "?error=Cannot+edit+this+leave";
+        if (!leave.isEditable()) {
+            return "redirect:/employee/leaves/" + id + "?error=Cannot+edit+this+leave";
+        }
+
+        model.addAttribute("leaveApplication", leave);
+        populateLeaveFormModel(model);
+        return "employee/leave-edit";
     }
-
-    model.addAttribute("leaveApplication", leave);
-    populateLeaveFormModel(model);
-    return "employee/leave-edit";
-}
-
 
     @PostMapping("/leaves/{id}/edit")
     public String updateLeave(@PathVariable Long id,
-                               @Valid @ModelAttribute("leaveApplication") LeaveApplication updated,
-                               BindingResult result,
-                               Model model,
-                               RedirectAttributes redirectAttrs) {
+            @Valid @ModelAttribute("leaveApplication") LeaveApplication updated,
+            BindingResult result,
+            Model model,
+            RedirectAttributes redirectAttrs) {
         Employee employee = securityUtils.getCurrentEmployee();
 
         if (result.hasErrors()) {
@@ -194,9 +191,9 @@ public String editLeaveForm(@PathVariable Long id, Model model) {
 
     @PostMapping("/compensation/claim")
     public String submitCompensationClaim(@Valid @ModelAttribute("claim") CompensationClaim claim,
-                                           BindingResult result,
-                                           Model model,
-                                           RedirectAttributes redirectAttrs) {
+            BindingResult result,
+            Model model,
+            RedirectAttributes redirectAttrs) {
         if (result.hasErrors()) {
             Employee employee = securityUtils.getCurrentEmployee();
             model.addAttribute("myClaims", leaveService.getMyCompensationClaims(employee));
@@ -214,11 +211,11 @@ public String editLeaveForm(@PathVariable Long id, Model model) {
     }
     // =========== PRIVATE HELPERS ===========
 
-private void populateLeaveFormModel(Model model) {
-    int year = LocalDate.now().getYear();
-    model.addAttribute("leaveTypes", leaveService.getActiveLeaveTypes());
-    model.addAttribute("today", LocalDate.now());
-    model.addAttribute("publicHolidays", leaveService.getPublicHolidaysForYear(year));
-}
+    private void populateLeaveFormModel(Model model) {
+        int year = LocalDate.now().getYear();
+        model.addAttribute("leaveTypes", leaveService.getActiveLeaveTypes());
+        model.addAttribute("today", LocalDate.now());
+        model.addAttribute("publicHolidays", leaveService.getPublicHolidaysForYear(year));
+    }
 
 }
