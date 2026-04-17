@@ -28,3 +28,8 @@ target/
 
 # Local developer overrides — never commit credentials
 application-local.properties
+
+# AI agent local config (commands, hooks, prompts — developer-local, not shared)
+.claude/
+.codex/
+AGENTS.md

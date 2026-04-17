@@ -1,5 +1,6 @@
 package com.iss.laps.service;
 
+import com.iss.laps.dto.EmployeeEditForm;
 import com.iss.laps.exception.ResourceNotFoundException;
 import com.iss.laps.model.Employee;
 import com.iss.laps.model.LeaveEntitlement;
@@ -53,9 +54,12 @@ public class EmployeeService {
 
     @Transactional
     public Employee createEmployee(Employee employee) {
+        if (employee.getRole() == Role.ROLE_ADMIN) {
+            throw new IllegalArgumentException("ROLE_ADMIN accounts cannot be created via the employee management form.");
+        }
         employee.setPassword(passwordEncoder.encode(employee.getPassword()));
         Employee saved = employeeRepository.save(employee);
-        // Auto-create leave entitlements for current year
+        // Auto-create leave entitlements for current year (skipped for ROLE_ADMIN)
         initLeaveEntitlements(saved, LocalDate.now().getYear());
         return saved;
     }
@@ -65,6 +69,28 @@ public class EmployeeService {
         return employeeRepository.save(employee);
     }
 
+    /**
+     * Applies an {@link EmployeeEditForm} onto the persisted employee identified by {@code id}.
+     * Rejects attempts to assign or modify a ROLE_ADMIN account (issue #71, #69).
+     */
+    @Transactional
+    public Employee updateEmployeeFromForm(Long id, EmployeeEditForm form, Long managerId) {
+        if (form.getRole() == Role.ROLE_ADMIN) {
+            throw new IllegalArgumentException("ROLE_ADMIN cannot be assigned via the employee edit form.");
+        }
+        Employee employee = findById(id);
+        if (employee.getRole() == Role.ROLE_ADMIN) {
+            throw new IllegalStateException("ROLE_ADMIN accounts cannot be modified via the employee management form.");
+        }
+        employee.setName(form.getName());
+        employee.setEmail(form.getEmail());
+        employee.setRole(form.getRole());
+        employee.setDesignation(form.getDesignation());
+        employee.setActive(form.isActive());
+        employee.setManager(managerId != null ? findById(managerId) : null);
+        return employeeRepository.save(employee);
+    }
+    
     @Transactional
     public void updatePassword(Employee employee, String newPassword) {
         employee.setPassword(passwordEncoder.encode(newPassword));
@@ -74,16 +100,27 @@ public class EmployeeService {
     @Transactional
     public void deactivateEmployee(Long id) {
         Employee employee = findById(id);
+        if (employee.getRole() == Role.ROLE_ADMIN) {
+            throw new IllegalStateException("ROLE_ADMIN accounts cannot be deactivated.");
+        }
         employee.setActive(false);
         employeeRepository.save(employee);
     }
 
     @Transactional
     public void deleteEmployee(Long id) {
+        Employee employee = findById(id);
+        if (employee.getRole() == Role.ROLE_ADMIN) {
+            throw new IllegalStateException("ROLE_ADMIN accounts cannot be deleted.");
+        }
         employeeRepository.deleteById(id);
     }
 
     private void initLeaveEntitlements(Employee employee, int year) {
+        // ROLE_ADMIN accounts do not participate in the leave workflow
+        if (employee.getRole() == Role.ROLE_ADMIN || employee.getDesignation() == null) {
+            return;
+        }
         List<LeaveType> leaveTypes = leaveTypeRepository.findByActive(true);
         for (LeaveType lt : leaveTypes) {
             double days;
@@ -100,6 +137,9 @@ public class EmployeeService {
     }
 
     public List<LeaveEntitlement> getEntitlements(Employee employee, int year) {
+        if (employee.getRole() == Role.ROLE_ADMIN) {
+            throw new IllegalStateException("ROLE_ADMIN accounts do not have leave entitlements.");
+        }
         return leaveEntitlementRepository.findByEmployeeAndYear(employee, year);
     }
 
@@ -107,6 +147,9 @@ public class EmployeeService {
     public void updateEntitlement(Long entitlementId, double totalDays) {
         LeaveEntitlement ent = leaveEntitlementRepository.findById(entitlementId)
                 .orElseThrow(() -> new ResourceNotFoundException("Entitlement not found"));
+        if (ent.getEmployee().getRole() == Role.ROLE_ADMIN) {
+            throw new IllegalStateException("Cannot modify entitlements for a ROLE_ADMIN account.");
+        }
         ent.setTotalDays(totalDays);
         leaveEntitlementRepository.save(ent);
     }

@@ -31,4 +31,5 @@ public class GlobalExceptionHandler {
         model.addAttribute("errorMessage", "An unexpected error occurred. Please try again.");
         return "error/error";
     }
+
 }
