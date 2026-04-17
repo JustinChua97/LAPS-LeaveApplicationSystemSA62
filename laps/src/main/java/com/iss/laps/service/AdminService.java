@@ -1,17 +1,19 @@
 package com.iss.laps.service;
 
+import java.time.LocalDate;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.iss.laps.exception.LeaveApplicationException;
 import com.iss.laps.exception.ResourceNotFoundException;
 import com.iss.laps.model.LeaveType;
 import com.iss.laps.model.PublicHoliday;
 import com.iss.laps.repository.LeaveTypeRepository;
 import com.iss.laps.repository.PublicHolidayRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -33,11 +35,22 @@ public class AdminService {
 
     @Transactional
     public LeaveType saveLeaveType(LeaveType leaveType) {
+        if (leaveType.getId() != null) {
+            LeaveType existing = findLeaveTypeById(leaveType.getId());
+            leaveType.setDefaultType(existing.getDefaultType());
+        }
         return leaveTypeRepo.save(leaveType);
     }
 
     @Transactional
     public void deleteLeaveType(Long id) {
+        LeaveType existingLeaveType = leaveTypeRepo.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Leave type not found"));
+            
+        if (existingLeaveType.getDefaultType() != null) {
+            throw new LeaveApplicationException("Cannot delete a default leave type");
+        }
+
         leaveTypeRepo.deleteById(id);
     }
 

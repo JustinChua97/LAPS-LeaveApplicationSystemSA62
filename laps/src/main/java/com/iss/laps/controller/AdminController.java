@@ -1,21 +1,34 @@
 package com.iss.laps.controller;
 
-import com.iss.laps.model.*;
-import com.iss.laps.service.AdminService;
-import com.iss.laps.service.EmployeeService;
-import com.iss.laps.util.SecurityUtils;
-import lombok.RequiredArgsConstructor;
+import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import com.iss.laps.exception.LeaveApplicationException;
+import com.iss.laps.model.Designation;
+import com.iss.laps.model.Employee;
+import com.iss.laps.model.LeaveEntitlement;
+import com.iss.laps.model.LeaveType;
+import com.iss.laps.model.PublicHoliday;
+import com.iss.laps.model.Role;
+import com.iss.laps.service.AdminService;
+import com.iss.laps.service.EmployeeService;
+import com.iss.laps.util.SecurityUtils;
+
 import jakarta.validation.Valid;
-import java.time.LocalDate;
-import java.util.Arrays;
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @Controller
 @RequestMapping("/admin")
@@ -142,15 +155,20 @@ public class AdminController {
         return "admin/entitlements";
     }
 
+    
     @PostMapping("/entitlements/{id}/update")
     public String updateEntitlement(@PathVariable Long id,
-                                     @RequestParam double totalDays,
-                                     @RequestParam Long employeeId,
-                                     RedirectAttributes redirectAttrs) {
+                                 @RequestParam double totalDays,
+                                 @RequestParam Long employeeId,
+                                 RedirectAttributes redirectAttrs) {
+    try {
         employeeService.updateEntitlement(id, totalDays);
         redirectAttrs.addFlashAttribute("success", "Entitlement updated.");
-        return "redirect:/admin/employees/" + employeeId + "/entitlements";
+    } catch (LeaveApplicationException e) {
+        redirectAttrs.addFlashAttribute("error", e.getMessage());
     }
+    return "redirect:/admin/employees/" + employeeId + "/entitlements";
+}
 
     // =========== LEAVE TYPES ===========
 
@@ -192,10 +210,15 @@ public class AdminController {
 
     @PostMapping("/leave-types/{id}/delete")
     public String deleteLeaveType(@PathVariable Long id, RedirectAttributes redirectAttrs) {
-        adminService.deleteLeaveType(id);
-        redirectAttrs.addFlashAttribute("success", "Leave type deleted.");
+        try {
+            adminService.deleteLeaveType(id);
+            redirectAttrs.addFlashAttribute("success", "Leave type deleted.");
+        } catch (LeaveApplicationException e) {
+            redirectAttrs.addFlashAttribute("error", e.getMessage());
+        }
         return "redirect:/admin/leave-types";
     }
+
 
     // =========== PUBLIC HOLIDAYS ===========
 

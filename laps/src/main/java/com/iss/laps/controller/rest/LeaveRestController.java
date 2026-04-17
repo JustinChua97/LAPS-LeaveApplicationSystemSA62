@@ -1,19 +1,25 @@
 package com.iss.laps.controller.rest;
 
-import com.iss.laps.model.LeaveApplication;
-import com.iss.laps.model.LeaveEntitlement;
-import com.iss.laps.service.EmployeeService;
-import com.iss.laps.service.LeaveService;
-import com.iss.laps.util.SecurityUtils;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.iss.laps.model.LeaveApplication;
+import com.iss.laps.model.LeaveEntitlement;
+import com.iss.laps.service.EmployeeService;
+import com.iss.laps.service.LeaveService;
+import com.iss.laps.util.SecurityUtils;
+
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -87,11 +93,11 @@ public class LeaveRestController {
     }
 
     /**
-     * GET /api/v1/leave-types - Get all active leave types
+     * GET /api/v1/leave-types - Get all default active leave types
      */
     @GetMapping("/leave-types")
     public ResponseEntity<List<?>> getLeaveTypes() {
-        return ResponseEntity.ok(leaveService.getActiveLeaveTypes().stream().map(lt -> {
+        return ResponseEntity.ok(leaveService.getDefaultActiveLeaveTypes().stream().map(lt -> {
             Map<String, Object> map = new HashMap<>();
             map.put("id", lt.getId());
             map.put("name", lt.getName());

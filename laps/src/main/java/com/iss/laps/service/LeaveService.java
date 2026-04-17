@@ -46,15 +46,8 @@ public class LeaveService {
     public LeaveApplication applyLeave(LeaveApplication application, Employee employee) {
         application.setEmployee(employee);
         application.setStatus(LeaveStatus.APPLIED);
-
-        Long leaveTypeId = application.getLeaveType() != null ? application.getLeaveType().getId() : null;
-        if (leaveTypeId == null) {
-            throw new LeaveApplicationException("Leave type is required");
-        }
-        LeaveType leaveType = leaveTypeRepo.findById(leaveTypeId)
-                .orElseThrow(() -> new LeaveApplicationException("Invalid leave type selected"));
-        application.setLeaveType(leaveType);
-
+        application.setLeaveType(resolveLeaveType(application));
+   
         validateLeaveApplication(application, employee, null);
 
         double duration = calculateDuration(application);
@@ -79,7 +72,7 @@ public class LeaveService {
             throw new LeaveApplicationException("Leave application cannot be updated in status: " + existing.getStatus());
         }
 
-        existing.setLeaveType(updated.getLeaveType());
+        existing.setLeaveType(resolveLeaveType(updated));
         existing.setStartDate(updated.getStartDate());
         existing.setEndDate(updated.getEndDate());
         existing.setReason(updated.getReason());
@@ -283,7 +276,7 @@ public class LeaveService {
         return compClaimRepo.findAllByManager(manager);
     }
 
-    // =========== LEAVE TYPES ===========
+    // =========== RETRIEVING LEAVE TYPES ===========
 
   
     public List<LeaveType> getActiveLeaveTypes() {
@@ -294,7 +287,35 @@ public class LeaveService {
         return leaveTypeRepo.findByNameIgnoreCase(name);
     }
 
+    public List<LeaveType> getDefaultActiveLeaveTypes() {
+    return leaveTypeRepo.findByActive(true).stream()
+        //1. Fetch all active leave types from database
+            .filter(lt -> lt.getDefaultType() != null)
+            //2. Filter this list to only keep default leave types - Annual, Medical, Hospitalisation, Compensation
+            .toList();
+            // 3. Collect the filtered results into a new list
+}
+    
+    //Future-proofing the system for new custom leave types
+    public List<LeaveType> getCustomActiveLeaveTypes() {
+    return leaveTypeRepo.findByActive(true).stream()
+        //1. Fetch all active leave types from database
+            .filter(lt -> lt.getDefaultType() == null)
+            //2. Filter this list to new and custom leave types
+            .toList();
+            // 3. Collect the filtered results into a new list
+}
+
     // =========== PRIVATE HELPERS ===========
+
+    private LeaveType resolveLeaveType(LeaveApplication application) {
+    LeaveType leaveType = application.getLeaveType();
+    if (leaveType == null || leaveType.getId() == null) {
+        throw new LeaveApplicationException("Leave type is required");
+    }
+    return leaveTypeRepo.findById(leaveType.getId())
+            .orElseThrow(() -> new LeaveApplicationException("Invalid leave type selected"));
+    }
 
     private void validateLeaveApplication(LeaveApplication application, Employee employee, Long excludeId) {
         LeaveType leaveType = application.getLeaveType();
@@ -302,6 +323,9 @@ public class LeaveService {
             throw new LeaveApplicationException("Leave type is required");
         }
         LeaveTypeDefault typeLeave = leaveType.getDefaultType();
+        if (typeLeave == null) {
+            throw new LeaveApplicationException("Selected leave type is not supported for leave applications");
+        }
 
         //Step 1 - Generic Check if start and end dates are valid
         LocalDate start = application.getStartDate();
@@ -317,9 +341,14 @@ public class LeaveService {
         //Step 2 - Switch scenario for leave types
         double duration = calculateDuration(application);
 
-        if (typeLeave != null) {
             switch (typeLeave) {
                 case ANNUAL:
+                    //Confirm that no single annual leave application can exceed 14 conseuctive calendar days
+                    long calendarDays = calculateCalendarDaysInclusive(start, end);
+                    if (calendarDays > 14) {
+                        throw new LeaveApplicationException("Leave duration exceeds the maximum limit of 14 consecutive calendar days. Please seek Department Head approval for extended absence.");
+                    }
+
                     //Confirm that the start and end dates of the application is on a working day
                     List<PublicHoliday> holidays = publicHolidayRepo.findByYear(start.getYear());
                     if (!leaveCalculator.areWorkingDays(start, end, holidays)) {
@@ -327,36 +356,34 @@ public class LeaveService {
                     }
     
                     //Confirm entitlement & if there is sufficient leave balance 
+                    double annualDuration = calculateDuration(application);
                     double usedDaysAnnual = leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(employee, leaveType.getId(), start.getYear(), excludeId);
                     
-                    LeaveEntitlement ent = leaveEntitlementRepo.findByEmployeeAndLeaveTypeAndYear(employee, leaveType, start.getYear())
-                            .orElseThrow(() -> new LeaveApplicationException("Leave entitlement not found for this year"));
+                    LeaveEntitlement annualEntitlement = leaveEntitlementRepo
+                    .findByEmployeeAndLeaveTypeAndYear(employee, leaveType, start.getYear())
+                    .orElseThrow(() -> new LeaveApplicationException("Leave entitlement not found for this year"));
     
                     //Check that the application duration isn't longer than employee's annual leave entitlement
-                    if (duration > ent.getTotalDays()) {
-                        throw new LeaveApplicationException(
-                            "Annual Leave duration exceeds your entitlement.");
+                    if (annualDuration > annualEntitlement.getTotalDays()) {
+                        throw new LeaveApplicationException("Annual Leave duration exceeds your entitlement.");
                     }
                     
                     //Check that the application duration isn't longer than the balance of the employee's annual leave
-                    if (usedDaysAnnual + duration > ent.getTotalDays()) {
-                     throw new LeaveApplicationException(
-                            "Insufficient leave balance. Remaining: " + (ent.getTotalDays() - usedDaysAnnual) + " days");
+                    if (usedDaysAnnual + annualDuration > annualEntitlement.getTotalDays()) {
+                        throw new LeaveApplicationException(
+                            "Insufficient leave balance. Remaining: "
+                                + (annualEntitlement.getTotalDays() - usedDaysAnnual) + " days");
                     }
-    
-                    //Confirm that no single leave application can exceed 14 conseuctive calendar days
-                    if (duration > 14) {
-                        throw new LeaveApplicationException("Leave duration exceeds the maximum limit of 14 consecutive calendar days. Please seek Department Head approval for extended absence.");
-                    };
                     break;
-                        
+                
                 case MEDICAL:
                     // Medical Leave: max 14 days/year. Any more than that, and the employee will be directed to apply for hospitalisation leave.
                     // FOR FUTURE IMPLEMENTATION:
                     // FEATURE - If submitted medical leave is more than balance, to deduct the balance to zero, and the remainder of the submitted leave is to be deducted from hospitalisation leave.
-                    double usedDaysMed = leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(
+                    double medicalDuration = calculateDuration(application);
+                    double usedMedDays = leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(
                             employee, leaveType.getId(), start.getYear(),null);
-                    if (usedDaysMed + duration > 14) {
+                    if (usedMedDays + duration > 14) {
                         throw new LeaveApplicationException(
                                 "Medical leave limit exceeded. You will need to apply for hospitalisation leave instead.");
                     };
@@ -364,19 +391,19 @@ public class LeaveService {
                     
                 case HOSPITALISATION:
                     //Hospitalisation Leave: Max 46 days/year. MOM guidelines = 60 days of hospitalisation leave includes 14 days medical leave.
-                    double usedDaysHosp = leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(
+                    double usedHospDays = leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(
                             employee, leaveType.getId(), start.getYear(),null);
-                    if (usedDaysHosp + duration > 46) {
-                        throw new LeaveApplicationException("Hospitalisation leave limit exceeded. Remaining: " + (46 - usedDaysHosp) + " days");
+                    if (usedHospDays + duration > 46) {
+                        throw new LeaveApplicationException("Hospitalisation leave limit exceeded. Remaining: " + (46 - usedHospDays) + " days");
                     };
                     break;
                 
                     case COMPENSATION:
                     double earned = compClaimRepo.sumApprovedCompDaysByEmployee(employee);
-                    double used = leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(employee, leaveType.getId(), start.getYear(),null);
-                    if (used + duration > earned) {
+                    double usedCompensation = leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(employee, leaveType.getId(), start.getYear(),null);
+                    if (usedCompensation + duration > earned) {
                         throw new LeaveApplicationException(
-                            "Insufficient compensation leave. Available: " + (earned - used) + " days");
+                            "Insufficient compensation leave. Available: " + (earned - usedCompensation) + " days");
                     };
                     break;
                     
@@ -384,7 +411,6 @@ public class LeaveService {
                         throw new LeaveApplicationException("This leave type is not yet implemented."); // Future Leave handling logic can be included here
                 }
         }
-    }
 
     private double calculateDuration(LeaveApplication application) {
         LeaveType leaveType = application.getLeaveType();
@@ -405,11 +431,14 @@ public class LeaveService {
             return 0.5;
         }
 
-        List<PublicHoliday> holidays = publicHolidayRepo.findByYear(start.getYear());
+        List<PublicHoliday> holidays = findHolidaysAcrossRange(start, end);
         
         LeaveTypeDefault typeLeave = leaveType.getDefaultType();
+        if (typeLeave == null) {
+            throw new LeaveApplicationException("Selected leave type is not supported for leave applications");
+        }
         
-        // To refactor into Switch statement?
+        // Refactored into Switch statement
         switch (typeLeave) {
             case ANNUAL:
                 return leaveCalculator.calculateAnnualLeaveDays(start, end, holidays);
@@ -459,6 +488,25 @@ public class LeaveService {
                     }
                 });
     }
+
+    //Calendar helpers for leave
+    private long calculateCalendarDaysInclusive(LocalDate start, LocalDate end) {
+    return java.time.temporal.ChronoUnit.DAYS.between(start, end) + 1;
+}
+
+    private List<PublicHoliday> findHolidaysAcrossRange(LocalDate start, LocalDate end) {
+        int startYear = start.getYear();
+        int endYear = end.getYear();
+        List<PublicHoliday> holidays = new java.util.ArrayList<>();
+        for (int y = startYear; y <= endYear; y++) {
+            holidays.addAll(publicHolidayRepo.findByYear(y));
+        }
+        return holidays;
+    }
+
+
+
+
 
     private boolean isSubordinate(Employee employee, Employee manager) {
         return employee.getManager() != null &&
