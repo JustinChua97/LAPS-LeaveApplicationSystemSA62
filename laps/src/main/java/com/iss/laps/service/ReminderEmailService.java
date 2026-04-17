@@ -47,6 +47,7 @@ public class ReminderEmailService {
 
             sendEmail(recipient, subject, body);
         } catch (Exception e) {
+            // @Async — failures are logged but must not abort the main transaction
             log.warn("Failed to send reminder email", e);
         }
     }
@@ -65,7 +66,7 @@ public class ReminderEmailService {
         context.setVariable("endDate", application.getEndDate());
         context.setVariable("reason", application.getReason());
         context.setVariable("daysUntilStart", daysUntilStart);
-        context.setVariable("appHost", appHost);
+        context.setVariable("leaveUrl", appHost + "/manager/leaves/" + application.getId());
 
         // NEW dedicated template for reminders
         return templateEngine.process("emails/leave-reminder", context);
