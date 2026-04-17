@@ -40,7 +40,7 @@ public class Employee {
     private Role role;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = true)
     private Designation designation;
 
     @Column(nullable = false)

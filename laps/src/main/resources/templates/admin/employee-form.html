@@ -38,21 +38,21 @@
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label class="form-label fw-semibold">Role <span class="text-danger">*</span></label>
-                                <select class="form-select" th:field="*{role}" required>
+                               <select class="form-select" th:field="*{role}" id="roleSelect" required>
                                     <option value="">-- Select --</option>
                                     <option th:each="r : ${roles}" th:value="${r}" th:text="${r.name().replace('ROLE_','')}"></option>
                                 </select>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-4" id="designationContainer">
                                 <label class="form-label fw-semibold">Designation <span class="text-danger">*</span></label>
-                                <select class="form-select" th:field="*{designation}" required>
+                                <select class="form-select" th:field="*{designation}" id="designationSelect">
                                     <option value="">-- Select --</option>
                                     <option th:each="d : ${designations}" th:value="${d}" th:text="${d.name().replace('_',' ')}"></option>
                                 </select>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label fw-semibold">Manager</label>
-                                <select class="form-select" th:field="*{manager.id}">
+                                 <select class="form-select" name="managerId">
                                     <option value="">-- None --</option>
                                     <option th:each="m : ${managers}" th:value="${m.id}" th:text="${m.name}"></option>
                                 </select>
@@ -69,6 +69,21 @@
             </div>
         </div>
     </div>
+	<script th:inline="none">
+	    document.addEventListener('DOMContentLoaded', function () {
+	        var roleSelect = document.getElementById('roleSelect');
+	        var designationContainer = document.getElementById('designationContainer');
+	        var designationSelect = document.getElementById('designationSelect');
+	        function toggleDesignation() {
+	            var isAdmin = roleSelect.value === 'ROLE_ADMIN';
+	            designationContainer.style.display = isAdmin ? 'none' : '';
+	            designationSelect.required = !isAdmin;
+	            if (isAdmin) { designationSelect.value = ''; }
+	        }
+	        roleSelect.addEventListener('change', toggleDesignation);
+	        toggleDesignation();
+	    });
+	</script>
 </section>
 </body>
 </html>
