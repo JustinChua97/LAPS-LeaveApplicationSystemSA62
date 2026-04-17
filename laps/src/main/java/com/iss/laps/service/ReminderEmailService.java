@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
-import com.iss.laps.exception.MessageNotSentException;
 import com.iss.laps.model.LeaveApplication;
 
 import jakarta.mail.MessagingException;
@@ -47,12 +46,8 @@ public class ReminderEmailService {
             String body = buildBody(application, daysUntilStart);
 
             sendEmail(recipient, subject, body);
-        } catch (MessageNotSentException e) {
-            log.warn("Failed to send reminder email", e);
-            throw e;
         } catch (Exception e) {
-            log.error("Failed to send reminder email", e);
-            throw new MessageNotSentException("Failed to send reminder email: " + e.getMessage(), e);
+            log.warn("Failed to send reminder email", e);
         }
     }
 
@@ -70,8 +65,8 @@ public class ReminderEmailService {
         context.setVariable("endDate", application.getEndDate());
         context.setVariable("reason", application.getReason());
         context.setVariable("daysUntilStart", daysUntilStart);
-        String LeaveUrl = appHost + "/manager/leaves/" + application.getId();
-        context.setVariable("leaveUrl", LeaveUrl);
+        context.setVariable("appHost", appHost);
+
         // NEW dedicated template for reminders
         return templateEngine.process("emails/leave-reminder", context);
     }
