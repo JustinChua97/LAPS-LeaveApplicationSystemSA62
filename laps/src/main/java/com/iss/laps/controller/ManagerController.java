@@ -66,11 +66,16 @@ public class ManagerController {
     }
 
     @GetMapping("/leaves/{id}")
-    public String viewLeaveDetail(@PathVariable Long id, Model model) {
+    public String viewLeaveDetail(@PathVariable Long id, Model model, RedirectAttributes redirectAttrs) {
         Employee manager = securityUtils.getCurrentEmployee();
-        LeaveApplication application = leaveService.findById(id);
+        LeaveApplication application;
+        try {
+            application = leaveService.findByIdForManager(id, manager);
+        } catch (LeaveApplicationException e) {
+            redirectAttrs.addFlashAttribute("error", "Access denied.");
+            return "redirect:/manager/leaves";
+        }
 
-        // Show other subordinates' leave during the same period
         List<LeaveApplication> conflicting = leaveService.getSubordinateLeaveDuringPeriod(
                 manager, application.getStartDate(), application.getEndDate());
 

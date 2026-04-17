@@ -168,6 +168,15 @@ public class LeaveService {
         }
         return la;
     }
+    
+    public LeaveApplication findByIdForManager(Long id, Employee manager) {
+        LeaveApplication leave = findById(id);
+        if (leave.getEmployee().getManager() == null ||
+            !leave.getEmployee().getManager().getId().equals(manager.getId())) {
+            throw new LeaveApplicationException("Access denied: not your subordinate's leave.");
+        }
+        return leave;
+    }
 
     public List<LeaveApplication> getMyLeaveHistory(Employee employee) {
         return leaveAppRepo.findByEmployeeAndYear(employee, LocalDate.now().getYear());
