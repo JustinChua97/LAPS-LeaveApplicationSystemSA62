@@ -1,6 +1,7 @@
 package com.iss.laps.controller;
 
 import com.iss.laps.exception.LeaveApplicationException;
+import com.iss.laps.exception.MessageNotSentException;
 import com.iss.laps.exception.ResourceNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ui.Model;
@@ -30,5 +31,12 @@ public class GlobalExceptionHandler {
         log.error("Unexpected error: {}", ex.getMessage(), ex);
         model.addAttribute("errorMessage", "An unexpected error occurred. Please try again.");
         return "error/error";
+    }
+
+    @ExceptionHandler(MessageNotSentException.class)
+    public String handleMessageNotSentError(MessageNotSentException ex, Model model) {
+        log.error("Message not sent error: {}", ex.getMessage(), ex);
+        model.addAttribute("errorMessage", "An unexpected error occurred. Email not Sent!");
+        return "error/email-error";
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
+import com.iss.laps.exception.MessageNotSentException;
 import com.iss.laps.model.LeaveApplication;
 
 import jakarta.mail.MessagingException;
@@ -47,8 +48,12 @@ public class EmailService {
             String body = buildBody(type, application);
 
             sendEmail(recipient, subject, body);
+        } catch (MessageNotSentException e) {
+            log.warn("Failed to send {} notification email", type, e);
+            throw e;
         } catch (Exception e) {
             log.warn("Failed to send {} notification email", type, e);
+            throw new MessageNotSentException("Failed to send email notification", e);
         }
     }
 
@@ -91,7 +96,19 @@ public class EmailService {
         context.setVariable("reason", application.getReason());
         context.setVariable("comment", application.getManagerComment() != null ? application.getManagerComment() : "N/A");
         context.setVariable("appHost", appHost);
-
+        String LeaveUrl;
+        switch (type) {
+            case APPLICATION:
+                LeaveUrl = appHost + "/manager/leaves/" + application.getId();
+                break;
+            case APPROVAL:
+            case REJECTION:
+                LeaveUrl = appHost + "/employees/leaves/" +application.getId();
+                break;
+                default:
+                    LeaveUrl = appHost;
+        }
+        context.setVariable("leaveUrl", LeaveUrl);
         String templateName;
         switch (type) {
             case APPLICATION:
