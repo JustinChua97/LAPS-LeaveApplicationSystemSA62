@@ -1,10 +1,12 @@
 package com.iss.laps.controller;
 
+import com.iss.laps.dto.EmployeeEditForm;
 import com.iss.laps.model.*;
 import com.iss.laps.service.AdminService;
 import com.iss.laps.service.EmployeeService;
 import com.iss.laps.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -20,6 +22,7 @@ import java.util.List;
 @Controller
 @RequestMapping("/admin")
 @RequiredArgsConstructor
+@Slf4j
 public class AdminController {
 
     private final EmployeeService employeeService;
@@ -37,6 +40,13 @@ public class AdminController {
 
     // =========== EMPLOYEE MANAGEMENT ===========
 
+    /** Roles that can be assigned via the employee management UI (ROLE_ADMIN excluded). */
+    private List<Role> employeeRoles() {
+        return Arrays.stream(Role.values())
+                .filter(r -> r != Role.ROLE_ADMIN)
+                .toList();
+    }
+    
     @GetMapping("/employees")
     public String listEmployees(Model model) {
         model.addAttribute("employees", employeeService.findAllIncludingInactive());
@@ -46,7 +56,7 @@ public class AdminController {
     @GetMapping("/employees/new")
     public String newEmployeeForm(Model model) {
         model.addAttribute("employee", new Employee());
-        model.addAttribute("roles", Arrays.asList(Role.values()));
+        model.addAttribute("roles", employeeRoles());
         model.addAttribute("designations", Arrays.asList(Designation.values()));
         model.addAttribute("managers", employeeService.findByRole(Role.ROLE_MANAGER));
         return "admin/employee-form";
@@ -55,10 +65,11 @@ public class AdminController {
     @PostMapping("/employees/new")
     public String createEmployee(@Valid @ModelAttribute("employee") Employee employee,
                                   BindingResult result,
+                                  @RequestParam(required = false) Long managerId,
                                   Model model,
                                   RedirectAttributes redirectAttrs) {
         if (result.hasErrors()) {
-            model.addAttribute("roles", Arrays.asList(Role.values()));
+        	model.addAttribute("roles", employeeRoles());
             model.addAttribute("designations", Arrays.asList(Designation.values()));
             model.addAttribute("managers", employeeService.findByRole(Role.ROLE_MANAGER));
             return "admin/employee-form";
@@ -66,12 +77,15 @@ public class AdminController {
 
         if (employeeService.existsByUsername(employee.getUsername())) {
             model.addAttribute("error", "Username already exists");
-            model.addAttribute("roles", Arrays.asList(Role.values()));
+            model.addAttribute("roles", employeeRoles());
             model.addAttribute("designations", Arrays.asList(Designation.values()));
             model.addAttribute("managers", employeeService.findByRole(Role.ROLE_MANAGER));
             return "admin/employee-form";
         }
 
+        if (managerId != null) {
+            employee.setManager(employeeService.findById(managerId));
+        }
         employeeService.createEmployee(employee);
         redirectAttrs.addFlashAttribute("success", "Employee created successfully.");
         return "redirect:/admin/employees";
@@ -80,8 +94,15 @@ public class AdminController {
     @GetMapping("/employees/{id}/edit")
     public String editEmployeeForm(@PathVariable Long id, Model model) {
         Employee employee = employeeService.findById(id);
+        EmployeeEditForm form = new EmployeeEditForm();
+        form.setName(employee.getName());
+        form.setEmail(employee.getEmail());
+        form.setRole(employee.getRole());
+        form.setDesignation(employee.getDesignation());
+        form.setActive(employee.isActive());
         model.addAttribute("employee", employee);
-        model.addAttribute("roles", Arrays.asList(Role.values()));
+        model.addAttribute("employeeForm", form);
+        model.addAttribute("roles", employeeRoles());
         model.addAttribute("designations", Arrays.asList(Designation.values()));
         model.addAttribute("managers", employeeService.findByRole(Role.ROLE_MANAGER));
         return "admin/employee-edit";
@@ -89,34 +110,36 @@ public class AdminController {
 
     @PostMapping("/employees/{id}/edit")
     public String updateEmployee(@PathVariable Long id,
-                                  @Valid @ModelAttribute("employee") Employee updated,
+    							  @Valid @ModelAttribute("employeeForm") EmployeeEditForm form,
                                   BindingResult result,
+                                  @RequestParam(required = false) Long managerId,
                                   Model model,
                                   RedirectAttributes redirectAttrs) {
         if (result.hasErrors()) {
-            model.addAttribute("roles", Arrays.asList(Role.values()));
+            model.addAttribute("employee", employeeService.findById(id));
+            model.addAttribute("roles", employeeRoles());
             model.addAttribute("designations", Arrays.asList(Designation.values()));
             model.addAttribute("managers", employeeService.findByRole(Role.ROLE_MANAGER));
             return "admin/employee-edit";
         }
 
-        Employee existing = employeeService.findById(id);
-        existing.setName(updated.getName());
-        existing.setEmail(updated.getEmail());
-        existing.setRole(updated.getRole());
-        existing.setDesignation(updated.getDesignation());
-        existing.setManager(updated.getManager());
-        existing.setActive(updated.isActive());
-
-        employeeService.updateEmployee(existing);
-        redirectAttrs.addFlashAttribute("success", "Employee updated successfully.");
+        try {
+            employeeService.updateEmployeeFromForm(id, form, managerId);
+            redirectAttrs.addFlashAttribute("success", "Employee updated successfully.");
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            redirectAttrs.addFlashAttribute("error", e.getMessage());
+        }
         return "redirect:/admin/employees";
     }
 
     @PostMapping("/employees/{id}/deactivate")
     public String deactivateEmployee(@PathVariable Long id, RedirectAttributes redirectAttrs) {
-        employeeService.deactivateEmployee(id);
-        redirectAttrs.addFlashAttribute("success", "Employee deactivated.");
+        try {
+            employeeService.deactivateEmployee(id);
+            redirectAttrs.addFlashAttribute("success", "Employee deactivated.");
+        } catch (IllegalStateException e) {
+            redirectAttrs.addFlashAttribute("error", e.getMessage());
+        }
         return "redirect:/admin/employees";
     }
 
@@ -125,8 +148,11 @@ public class AdminController {
         try {
             employeeService.deleteEmployee(id);
             redirectAttrs.addFlashAttribute("success", "Employee deleted.");
+        } catch (IllegalStateException e) {
+            redirectAttrs.addFlashAttribute("error", e.getMessage());
         } catch (Exception e) {
-            redirectAttrs.addFlashAttribute("error", "Cannot delete: " + e.getMessage());
+            log.error("Failed to delete employee {}", id, e);
+            redirectAttrs.addFlashAttribute("error", "Cannot delete employee.");
         }
         return "redirect:/admin/employees";
     }
@@ -134,8 +160,12 @@ public class AdminController {
     // =========== LEAVE ENTITLEMENT ===========
 
     @GetMapping("/employees/{id}/entitlements")
-    public String viewEntitlements(@PathVariable Long id, Model model) {
+    public String viewEntitlements(@PathVariable Long id, Model model, RedirectAttributes redirectAttrs) {
         Employee employee = employeeService.findById(id);
+        if (employee.getRole() == Role.ROLE_ADMIN) {
+            redirectAttrs.addFlashAttribute("error", "Admin accounts do not have leave entitlements.");
+            return "redirect:/admin/employees";
+        }
         List<LeaveEntitlement> entitlements = employeeService.getEntitlements(employee, LocalDate.now().getYear());
         model.addAttribute("employee", employee);
         model.addAttribute("entitlements", entitlements);
@@ -147,8 +177,12 @@ public class AdminController {
                                      @RequestParam double totalDays,
                                      @RequestParam Long employeeId,
                                      RedirectAttributes redirectAttrs) {
-        employeeService.updateEntitlement(id, totalDays);
-        redirectAttrs.addFlashAttribute("success", "Entitlement updated.");
+        try {
+            employeeService.updateEntitlement(id, totalDays);
+            redirectAttrs.addFlashAttribute("success", "Entitlement updated.");
+        } catch (IllegalStateException e) {
+            redirectAttrs.addFlashAttribute("error", e.getMessage());
+        }
         return "redirect:/admin/employees/" + employeeId + "/entitlements";
     }
 
@@ -214,8 +248,12 @@ public class AdminController {
     }
 
     @PostMapping("/holidays/new")
-    public String createHoliday(@ModelAttribute("holiday") PublicHoliday holiday,
-                                 RedirectAttributes redirectAttrs) {
+    public String createHoliday(@Valid @ModelAttribute("holiday") PublicHoliday holiday,
+                                BindingResult result,
+                                RedirectAttributes redirectAttrs) {
+        if (result.hasErrors()) {
+            return "admin/holiday-form";
+        }
         if (adminService.isHolidayDateTaken(holiday.getHolidayDate())) {
             redirectAttrs.addFlashAttribute("error", "A holiday already exists for this date.");
             return "redirect:/admin/holidays/new";

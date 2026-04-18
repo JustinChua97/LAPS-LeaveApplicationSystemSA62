@@ -31,7 +31,7 @@
                                   th:classappend="${emp.role.name() == 'ROLE_ADMIN'} ? 'bg-danger' : (${emp.role.name() == 'ROLE_MANAGER'} ? 'bg-primary' : 'bg-secondary')"
                                   th:text="${emp.role.name().replace('ROLE_','')}"></span>
                         </td>
-                        <td th:text="${emp.designation.name().replace('_',' ')}"></td>
+                        <td th:text="${emp.designation != null ? emp.designation.name().replace('_',' ') : '-'}"></td>
                         <td th:text="${emp.manager != null ? emp.manager.name : '-'}"></td>
                         <td>
                             <span class="badge" th:classappend="${emp.active} ? 'bg-success' : 'bg-secondary'"
@@ -40,10 +40,11 @@
                         <td>
                             <a th:href="@{'/admin/employees/' + ${emp.id} + '/edit'}"
                                class="btn btn-xs btn-outline-warning btn-sm">Edit</a>
-                            <a th:href="@{'/admin/employees/' + ${emp.id} + '/entitlements'}"
+							   <a th:unless="${emp.role.name() == 'ROLE_ADMIN'}"
+							      th:href="@{'/admin/employees/' + ${emp.id} + '/entitlements'}"
                                class="btn btn-xs btn-outline-info btn-sm">Entitlements</a>
                             <button type="button" class="btn btn-xs btn-outline-danger btn-sm"
-                                    th:if="${emp.active}"
+                                    th:if="${emp.active and emp.role.name() != 'ROLE_ADMIN'}"
                                     th:data-url="@{'/admin/employees/' + ${emp.id} + '/deactivate'}"
                                     data-confirm="Deactivate this employee?"
                                     onclick="confirmPost(this)">Deactivate</button>

@@ -105,7 +105,6 @@ public class DataInitializer implements ApplicationRunner {
         seedEntitlements(empSarah, annualLeave, medicalLeave, compLeave, 18, year);
         seedEntitlements(mgrChen,  annualLeave, medicalLeave, compLeave, 18, year);
         seedEntitlements(mgrLim,   annualLeave, medicalLeave, compLeave, 21, year);
-        seedEntitlements(admin,    annualLeave, medicalLeave, compLeave, 14, year);
 
         // ---- Sample leave applications ----
         seedSampleLeave(empTan, annualLeave, mgrChen);
