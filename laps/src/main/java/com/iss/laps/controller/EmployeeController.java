@@ -43,104 +43,51 @@ public class EmployeeController {
         return "employee/dashboard";
     }
 
-    // =========== LEAVE APPLICATION ===========
-​
-48
-    @GetMapping("/leaves/apply")
- |  | 
-49
- 
-78
- 
-    public String applyLeaveForm(Model model) {
-79
- 
-        model.addAttribute("leaveApplication", new LeaveApplication());
-80
- 
-        populateLeaveFormModel(model); // handles leaveTypes, today, publicHolidays
-81
- 
-        return "employee/leave-apply";
-82
- 
-    }
-83
- 
-​
-84
- 
-    @PostMapping("/leaves/apply")
-85
- 
-    public String applyLeave(@Valid @ModelAttribute("leaveApplication") LeaveApplication application,
-86
- 
-            BindingResult result,
-87
- 
-            Model model,
-88
- 
-            RedirectAttributes redirectAttrs) {
-89
- 
-        Employee employee = securityUtils.getCurrentEmployee();
-90
- 
-​
-91
- 
-        if (result.hasErrors()) {
-92
- 
-            populateLeaveFormModel(model);
-    @GetMapping("/leaves/apply")
-    public String applyLeaveForm(Model model) {
-        model.addAttribute("leaveApplication", new LeaveApplication());
-        populateLeaveFormModel(model); // handles leaveTypes, today, publicHolidays
-        return "employee/leave-apply";
-    }
+  // =========== LEAVE APPLICATION ===========
 
-    @PostMapping("/leaves/apply")
-    public String applyLeave(@Valid @ModelAttribute("leaveApplication") LeaveApplication application,
-            BindingResult result,
-            Model model,
-            RedirectAttributes redirectAttrs) {
-        Employee employee = securityUtils.getCurrentEmployee();
-
-        if (result.hasErrors()) {
-            populateLeaveFormModel(model);
-            return "employee/leave-apply";
-        }
-
-        try {
-            leaveService.applyLeave(application, employee);
-            redirectAttrs.addFlashAttribute("success", "Leave application submitted successfully.");
-            return "redirect:/employee/leaves";
-        } catch (LeaveApplicationException e) {
-            model.addAttribute("error", e.getMessage());
-            populateLeaveFormModel(model);
-            return "employee/leave-apply";
-        }
-    }
+@GetMapping("/leaves/apply")
+public String applyLeaveForm(Model model) {
+    model.addAttribute("leaveApplication", new LeaveApplication());
+    populateLeaveFormModel(model); // handles leaveTypes, today, publicHolidays
+    return "employee/leave-apply";
 }
 
+@PostMapping("/leaves/apply")
+public String applyLeave(@Valid @ModelAttribute("leaveApplication") LeaveApplication application,
+        BindingResult result,
+        Model model,
+        RedirectAttributes redirectAttrs) {
+    Employee employee = securityUtils.getCurrentEmployee();
 
+    if (result.hasErrors()) {
+        populateLeaveFormModel(model);
+        return "employee/leave-apply";
+    }
+
+    try {
+        leaveService.applyLeave(application, employee);
+        redirectAttrs.addFlashAttribute("success", "Leave application submitted successfully.");
+        return "redirect:/employee/leaves";
+    } catch (LeaveApplicationException e) {
+        model.addAttribute("error", e.getMessage());
+        populateLeaveFormModel(model);
+        return "employee/leave-apply";
+    }
+}
     // =========== LEAVE HISTORY ===========
 
     @GetMapping("/leaves")
     public String leaveHistory(@RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            Model model) {
+                                @RequestParam(defaultValue = "10") int size,
+                                Model model) {
         Employee employee = securityUtils.getCurrentEmployee();
-        // Validate pagination parameters (issue #45)
-        if (page < 0) {
-            page = 0;
-        }
-        if (size != 10 && size != 20 && size != 25) {
-            size = 10;
-        }
+                // Validate pagination parameters (issue #45)
+            if (page < 0) {
+                 page = 0;
+            }
+            if (size != 10 && size != 20 && size != 25) {
+                size = 10;
+            }
         Pageable pageable = PageRequest.of(page, size);
         Page<LeaveApplication> leavePage = leaveService.getMyLeaveHistoryPaged(employee, pageable);
 
@@ -164,7 +111,7 @@ public class EmployeeController {
 
     // =========== UPDATE LEAVE ===========
 
-  @GetMapping("/leaves/{id}/edit")
+   @GetMapping("/leaves/{id}/edit")
 public String editLeaveForm(@PathVariable Long id, Model model) {
     Employee employee = securityUtils.getCurrentEmployee();
     LeaveApplication leave = leaveService.findByIdAndEmployee(id, employee);
@@ -181,10 +128,10 @@ public String editLeaveForm(@PathVariable Long id, Model model) {
 
     @PostMapping("/leaves/{id}/edit")
     public String updateLeave(@PathVariable Long id,
-            @Valid @ModelAttribute("leaveApplication") LeaveApplication updated,
-            BindingResult result,
-            Model model,
-            RedirectAttributes redirectAttrs) {
+                               @Valid @ModelAttribute("leaveApplication") LeaveApplication updated,
+                               BindingResult result,
+                               Model model,
+                               RedirectAttributes redirectAttrs) {
         Employee employee = securityUtils.getCurrentEmployee();
 
         if (result.hasErrors()) {
@@ -244,9 +191,9 @@ public String editLeaveForm(@PathVariable Long id, Model model) {
 
     @PostMapping("/compensation/claim")
     public String submitCompensationClaim(@Valid @ModelAttribute("claim") CompensationClaim claim,
-            BindingResult result,
-            Model model,
-            RedirectAttributes redirectAttrs) {
+                                           BindingResult result,
+                                           Model model,
+                                           RedirectAttributes redirectAttrs) {
         if (result.hasErrors()) {
             Employee employee = securityUtils.getCurrentEmployee();
             model.addAttribute("myClaims", leaveService.getMyCompensationClaims(employee));
