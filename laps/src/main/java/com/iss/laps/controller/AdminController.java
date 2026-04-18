@@ -248,8 +248,12 @@ public class AdminController {
     }
 
     @PostMapping("/holidays/new")
-    public String createHoliday(@ModelAttribute("holiday") PublicHoliday holiday,
-                                 RedirectAttributes redirectAttrs) {
+    public String createHoliday(@Valid @ModelAttribute("holiday") PublicHoliday holiday,
+                                BindingResult result,
+                                RedirectAttributes redirectAttrs) {
+        if (result.hasErrors()) {
+            return "admin/holiday-form";
+        }
         if (adminService.isHolidayDateTaken(holiday.getHolidayDate())) {
             redirectAttrs.addFlashAttribute("error", "A holiday already exists for this date.");
             return "redirect:/admin/holidays/new";
