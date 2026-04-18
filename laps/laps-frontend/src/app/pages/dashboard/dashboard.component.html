@@ -36,9 +36,12 @@
           </a>
           <ul class="dropdown-menu dropdown-menu-end">
             <li>
-              <a class="dropdown-item text-danger" href="/logout">
-                <i class="bi bi-box-arrow-right"></i> Logout
-              </a>
+              <form method="post" action="/logout" class="d-inline">
+                <input type="hidden" name="_csrf" [value]="csrfToken">
+                <button type="submit" class="dropdown-item text-danger border-0 bg-transparent">
+                  <i class="bi bi-box-arrow-right"></i> Logout
+                </button>
+              </form>
             </li>
           </ul>
         </li>

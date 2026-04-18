@@ -21,4 +21,4 @@ if [ ! -f "$STATIC_APP/index.html" ]; then
 fi
 
 cd "$SCRIPT_DIR/laps"
-exec mvn spring-boot:run -Dmaven.test.skip=true
+exec mvn spring-boot:run -Dmaven.test.skip=true -Dspring-boot.run.profiles=local
