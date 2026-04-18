@@ -112,18 +112,24 @@ public class AdminController {
             model.addAttribute("managers", employeeService.findByRole(Role.ROLE_MANAGER));
             return "admin/employee-edit";
         }
+    
+    Employee existing = employeeService.findById(id);
+    Designation originalDesignation = existing.getDesignation();
+    
+    existing.setName(updated.getName());
+    existing.setEmail(updated.getEmail());
+    existing.setRole(updated.getRole());
+    existing.setManager(updated.getManager());
+    existing.setActive(updated.isActive());
 
-        Employee existing = employeeService.findById(id);
-        existing.setName(updated.getName());
-        existing.setEmail(updated.getEmail());
-        existing.setRole(updated.getRole());
-        existing.setDesignation(updated.getDesignation());
-        existing.setManager(updated.getManager());
-        existing.setActive(updated.isActive());
+    employeeService.updateEmployeeDetails(existing);
 
-        employeeService.updateEmployee(existing);
-        redirectAttrs.addFlashAttribute("success", "Employee updated successfully.");
-        return "redirect:/admin/employees";
+    if (originalDesignation != updated.getDesignation()) {
+        employeeService.updateEmployeeDesignation(id, updated.getDesignation());
+    }
+
+    redirectAttrs.addFlashAttribute("success", "Employee updated successfully.");
+    return "redirect:/admin/employees";
     }
 
     @PostMapping("/employees/{id}/deactivate")

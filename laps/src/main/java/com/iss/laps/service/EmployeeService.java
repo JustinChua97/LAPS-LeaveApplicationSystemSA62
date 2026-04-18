@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.iss.laps.exception.LeaveApplicationException;
 import com.iss.laps.exception.ResourceNotFoundException;
+import com.iss.laps.model.Designation;
 import com.iss.laps.model.Employee;
 import com.iss.laps.model.LeaveEntitlement;
 import com.iss.laps.model.LeaveType;
@@ -65,23 +66,29 @@ public class EmployeeService {
     }
 
     @Transactional
-    public Employee updateEmployee(Employee employee) {
-        return employeeRepository.save(employee); //To update employee details - EXCEPT designation
+    public Employee updateEmployeeDetails(Employee employee) {
+    // Only updates the employee's details EXCEPT for designation. 
+        Employee existing = findById(employee.getId());
+        existing.setName(employee.getName());
+        existing.setEmail(employee.getEmail());
+        existing.setRole(employee.getRole());
+        existing.setManager(employee.getManager());
+        existing.setActive(employee.isActive());
+        return employeeRepository.save(existing);
     }
 
     @Transactional
-    public Employee updateEmployeeDesignation(Employee employee) {
-        //To recalculate annual leave entitlement for current year if employee designation has changed.
-        Employee existing = findById(employee.getId());
-        boolean designationChanged = existing.getDesignation() != employee.getDesignation();
+    public Employee updateEmployeeDesignation(Long employeeId, Designation newDesignation) {
+    // ONLY updates the employee's designation and triggers an annual leave entitlement recalculation.
+        Employee existing = findById(employeeId);
+        boolean changed = existing.getDesignation() != newDesignation;
+        existing.setDesignation(newDesignation);
+        Employee saved = employeeRepository.save(existing);
 
-        Employee saved = employeeRepository.save(employee);
-
-        if (designationChanged) {
+        if (changed) {
             recalculateAnnualEntitlementForYear(saved, LocalDate.now().getYear());
         }
-
-    return saved; 
+        return saved;
     }
 
     @Transactional
@@ -105,8 +112,9 @@ public class EmployeeService {
     private void initLeaveEntitlements(Employee employee, int year) {
         List<LeaveType> leaveTypes = leaveTypeRepository.findByActive(true);
         for (LeaveType lt : leaveTypes) {
-            double days = 0.0;
             if (lt.getDefaultType() != null) {
+            double days = 0.0;
+            
                 switch (lt.getDefaultType()) {
                     case ANNUAL:
                         days = employee.getDesignation().getAnnualLeaveEntitlement();
@@ -122,7 +130,7 @@ public class EmployeeService {
                         break;
                     default:
                         break;
-            }
+                }
 
             LeaveEntitlement ent = new LeaveEntitlement(employee, lt, year, days);
             leaveEntitlementRepository.save(ent);

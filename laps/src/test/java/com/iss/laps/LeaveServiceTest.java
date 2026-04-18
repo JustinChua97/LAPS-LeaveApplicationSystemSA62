@@ -496,7 +496,7 @@ class LeaveServiceTest {
     }
 
     @Test
-    @DisplayName("Leave application with >14 days duration is rejected.")
+    @DisplayName("Annual Leave application with >14 days duration is rejected.")
     void applyOverlimitLeave() {
         LeaveApplication app = new LeaveApplication();
         app.setLeaveType(annualLeaveType);
@@ -508,7 +508,7 @@ class LeaveServiceTest {
 
         assertThatThrownBy(() -> leaveService.applyLeave(app, employee))
                 .isInstanceOf(LeaveApplicationException.class)
-                .hasMessageContaining("Leave duration exceeds the maximum limit of 14 consecutive calendar days. Please seek Department Head approval for extended absence.");
+                .hasMessageContaining("Duration of Annual Leave application exceeds the maximum limit of 14 consecutive calendar days. Please seek Department Head approval for extended absence.");
     }
 
     @Test
@@ -544,12 +544,12 @@ class LeaveServiceTest {
         annualEntitlement.setUsedDays(6.0);
 
         when(employeeRepository.findById(10L)).thenReturn(Optional.of(existing));
-        when(employeeRepository.save(updated)).thenReturn(updated);
+        when(employeeRepository.save(existing)).thenReturn(existing);
         when(leaveTypeRepo.findByDefaultType(LeaveTypeDefault.ANNUAL)).thenReturn(Optional.of(annualLeaveType));
-        when(leaveEntitlementRepo.findByEmployeeAndLeaveTypeAndYear(updated, annualLeaveType, currentYear))
-                .thenReturn(Optional.of(annualEntitlement));
+        when(leaveEntitlementRepo.findByEmployeeAndLeaveTypeAndYear(existing, annualLeaveType, currentYear))
+        .thenReturn(Optional.of(annualEntitlement));
 
-        Employee result = employeeService.updateEmployee(updated);
+        Employee result = employeeService.updateEmployeeDesignation(updated.getId(), updated.getDesignation());
 
         assertThat(result.getDesignation()).isEqualTo(Designation.SENIOR_PROFESSIONAL);
         assertThat(annualEntitlement.getTotalDays()).isEqualTo(21);
@@ -568,13 +568,78 @@ class LeaveServiceTest {
         updated.setDesignation(Designation.PROFESSIONAL);
 
         when(employeeRepository.findById(10L)).thenReturn(Optional.of(existing));
-        when(employeeRepository.save(updated)).thenReturn(updated);
+        when(employeeRepository.save(existing)).thenReturn(existing);  
 
-        employeeService.updateEmployee(updated);
+        employeeService.updateEmployeeDesignation(updated.getId(), updated.getDesignation());
 
         verify(leaveTypeRepo, never()).findByDefaultType(any());
     }
 
+    @Test
+    void applyLeave_medicalLeave_savesApplication() {
+    sampleApplication.setLeaveType(medicalType);
+    sampleApplication.setStartDate(LocalDate.of(2026, 3, 2));
+    sampleApplication.setEndDate(LocalDate.of(2026, 3, 4));
 
+    when(leaveTypeRepo.findById(2L)).thenReturn(Optional.of(medicalType));
+    when(leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(any(), eq(2L), anyInt(), isNull()))
+        .thenReturn(0.0);
+    when(leaveCalculator.calculateMedicalLeaveDays(any(), any())).thenReturn(3.0);
+    when(leaveAppRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    LeaveApplication result = leaveService.applyLeave(sampleApplication, employee);
+
+    assertThat(result.getStatus()).isEqualTo(LeaveStatus.APPLIED);
+    assertThat(result.getDuration()).isEqualTo(3.0);
+    }
+
+    @Test
+    void applyLeave_medicalLeave_overLimit_throwsException() {
+    sampleApplication.setLeaveType(medicalType);
+    sampleApplication.setStartDate(LocalDate.of(2026, 1, 1));
+    sampleApplication.setEndDate(LocalDate.of(2026, 1, 20));
+
+    when(leaveTypeRepo.findById(2L)).thenReturn(Optional.of(medicalType));
+    when(leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(any(), eq(2L), anyInt(), isNull()))
+        .thenReturn(0.0);
+
+    assertThatThrownBy(() -> leaveService.applyLeave(sampleApplication, employee))
+        .isInstanceOf(LeaveApplicationException.class);
+    }
+
+    @Test
+    void applyLeave_hospitalisationLeave_savesApplication() {
+    LeaveType hospitalisationType = new LeaveType();
+    hospitalisationType.setId(4L);
+    hospitalisationType.setName("Hospitalisation");
+    hospitalisationType.setDefaultType(LeaveTypeDefault.HOSPITALISATION);
+
+    sampleApplication.setLeaveType(hospitalisationType);
+
+    when(leaveTypeRepo.findById(4L)).thenReturn(Optional.of(hospitalisationType));
+    when(leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(any(), eq(4L), anyInt(), isNull()))
+        .thenReturn(0.0);
+    when(leaveCalculator.calculateHospitalisationLeaveDays(any(), any())).thenReturn(2.0);
+    when(leaveAppRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    LeaveApplication result = leaveService.applyLeave(sampleApplication, employee);
+
+    assertThat(result.getStatus()).isEqualTo(LeaveStatus.APPLIED);
+    assertThat(result.getDuration()).isEqualTo(2.0);
+    }
+
+    @Test
+    void applyLeave_compensationLeave_insufficientBalance_throwsException() {
+    sampleApplication.setLeaveType(compensationType);
+
+    when(leaveTypeRepo.findById(3L)).thenReturn(Optional.of(compensationType));
+    when(compClaimRepo.sumApprovedCompDaysByEmployee(employee)).thenReturn(0.0);
+    when(leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(any(), eq(3L), anyInt(), isNull()))
+        .thenReturn(0.0);
+    when(leaveCalculator.calculateCompensationLeaveDays(any(), any())).thenReturn(1.0);
+
+    assertThatThrownBy(() -> leaveService.applyLeave(sampleApplication, employee))
+        .isInstanceOf(LeaveApplicationException.class);
+    }
 
 }

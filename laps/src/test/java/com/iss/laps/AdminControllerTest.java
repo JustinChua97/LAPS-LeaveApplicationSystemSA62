@@ -6,14 +6,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 
 import com.iss.laps.controller.AdminController;
+import com.iss.laps.exception.LeaveApplicationException;
 import com.iss.laps.model.LeaveType;
 import com.iss.laps.service.AdminService;
+import com.iss.laps.service.EmployeeService;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AdminController Unit Tests")
@@ -24,6 +27,9 @@ class AdminControllerTest {
 
     @InjectMocks
     private AdminController adminController;
+
+    @Mock
+    private EmployeeService employeeService;
 
     @Test
     @DisplayName("Edit leave type submission surfaces validation errors as flash messages")
@@ -80,4 +86,31 @@ class AdminControllerTest {
         assertThat(submitted.isActive()).isFalse();
         verify(adminService).saveLeaveType(submitted);
     }
+
+    @Test
+    void updateEntitlement_catchesServiceErrorAndRedirectsWithError() {
+    doThrow(new LeaveApplicationException("Total entitlement cannot exceed 365 days."))
+        .when(employeeService)
+        .updateEntitlement(101L, 20);
+
+    RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
+    String viewName = adminController.updateEntitlement(101L, 20, 2L, redirectAttributes);
+
+    assertThat(viewName).isEqualTo("redirect:/admin/employees/2/entitlements");
+    assertThat(redirectAttributes.getFlashAttributes().get("error"))
+        .isEqualTo("Total entitlement cannot exceed 365 days.");
+    }
+
+    @Test
+    void updateEntitlement_successRedirectsWithSuccessFlash() {
+    RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
+    String viewName = adminController.updateEntitlement(101L, 20, 2L, redirectAttributes);
+
+    assertThat(viewName).isEqualTo("redirect:/admin/employees/2/entitlements");
+    assertThat(redirectAttributes.getFlashAttributes().get("success"))
+        .isEqualTo("Entitlement updated.");
+    verify(employeeService).updateEntitlement(101L, 20);
+    }
+
+
 }
