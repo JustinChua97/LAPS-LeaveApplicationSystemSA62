@@ -39,6 +39,10 @@ export class AuthService {
     return firstValueFrom(request$ as any) as Promise<void>;
   }
 
+  clearToken(): void {
+    sessionStorage.removeItem(TOKEN_KEY);
+  }
+
   getToken(): string | null {
     return sessionStorage.getItem(TOKEN_KEY);
   }

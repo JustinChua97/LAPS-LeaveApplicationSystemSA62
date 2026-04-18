@@ -25,6 +25,7 @@ export class DashboardComponent implements OnInit {
   }
 
   logout(): void {
+    this.authService.clearToken();
     fetch('/logout', {
       method: 'POST',
       headers: { 'X-XSRF-TOKEN': this.csrfToken },
