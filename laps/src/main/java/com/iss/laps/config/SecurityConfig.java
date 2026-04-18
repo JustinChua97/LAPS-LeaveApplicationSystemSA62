@@ -11,6 +11,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -51,18 +52,13 @@ public class SecurityConfig {
         return registration;
     }
 
-    /**
-     * API filter chain — no CSRF, supports both session cookies (Angular) and JWT Bearer tokens.
-     * Must be @Order(1) so it takes precedence over the web chain.
-     * CSRF is safe to disable here because the API relies on explicit credentials (session or Bearer),
-     * not on implicit browser cookie submission.
-     */
     @Bean
     @Order(1)
     public SecurityFilterChain apiFilterChain(HttpSecurity http) throws Exception {
         http
             .securityMatcher("/api/**")
             .csrf(AbstractHttpConfigurer::disable)
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/v1/auth/token").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
@@ -84,9 +80,6 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /**
-     * Web filter chain — Thymeleaf UI and Angular app. CSRF enabled, session-based.
-     */
     @Bean
     @Order(2)
     public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
@@ -99,6 +92,7 @@ public class SecurityConfig {
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
                 .requestMatchers("/app/**").permitAll()
                 .requestMatchers("/login", "/admin/login").permitAll()
+                .requestMatchers("/auth/jwt").authenticated()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/manager/**").hasAnyRole("MANAGER")
                 .requestMatchers("/employee/**").hasAnyRole("EMPLOYEE", "MANAGER")
