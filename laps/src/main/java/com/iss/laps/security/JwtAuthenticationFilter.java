@@ -52,7 +52,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String header = request.getHeader("Authorization");
         if (header == null || !header.startsWith("Bearer ")) {
-            unauthorized(response);
+            // No Bearer token — fall through so Spring Security can check the session cookie
+            chain.doFilter(request, response);
             return;
         }
 

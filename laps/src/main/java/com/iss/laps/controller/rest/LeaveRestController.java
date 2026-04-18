@@ -31,7 +31,7 @@ public class LeaveRestController {
         var employee = securityUtils.getCurrentEmployee();
         return ResponseEntity.ok(Map.of(
                 "fullName",    employee.getName(),
-                "designation", employee.getDesignation().name()
+                "designation", employee.getDesignation() != null ? employee.getDesignation().name() : ""
         ));
     }
 

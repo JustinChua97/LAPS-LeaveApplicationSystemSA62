@@ -19,6 +19,21 @@ export class DashboardComponent implements OnInit {
   fullName = this.authService.getFullName();
   designation = this.authService.getDesignation();
 
+  private get csrfToken(): string {
+    const match = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/);
+    return match ? decodeURIComponent(match[1]) : '';
+  }
+
+  logout(): void {
+    fetch('/logout', {
+      method: 'POST',
+      headers: { 'X-XSRF-TOKEN': this.csrfToken },
+      credentials: 'same-origin',
+    }).finally(() => {
+      window.location.href = '/login?logout=true';
+    });
+  }
+
   entitlements = signal<EntitlementDto[]>([]);
   recentLeaves = signal<LeaveDto[]>([]);
   loading = signal(true);
