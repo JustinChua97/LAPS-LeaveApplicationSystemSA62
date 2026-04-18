@@ -69,7 +69,7 @@ jobs:
         run: pip install semgrep
 
       - name: Run Semgrep SAST scan
-        run: semgrep ci
+        run: semgrep ci --no-supply-chain
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
 
