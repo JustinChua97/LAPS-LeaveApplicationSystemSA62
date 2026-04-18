@@ -30,7 +30,7 @@
 
                 <!-- Employee menu -->
                 <li class="nav-item" sec:authorize="hasAnyRole('EMPLOYEE','MANAGER','ADMIN')">
-                    <a class="nav-link" th:href="@{/app}">
+                    <a class="nav-link" th:href="@{/}">
                         <i class="bi bi-house"></i> My Dashboard
                     </a>
                 </li>
