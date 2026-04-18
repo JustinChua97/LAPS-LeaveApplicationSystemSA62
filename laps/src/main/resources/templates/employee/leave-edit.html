@@ -13,61 +13,64 @@
                         <div th:if="${error}" class="alert alert-danger">
                             <i class="bi bi-exclamation-triangle-fill"></i> <span th:text="${error}"></span>
                         </div>
-                       <form th:action="@{'/employee/leaves/' + ${leaveApplication.id} + '/edit'}"
-      th:object="${leaveApplication}" method="post">
-    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                        <form th:action="@{'/employee/leaves/' + ${leaveApplication.id} + '/edit'}"
+                            th:object="${leaveApplication}" method="post">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
 
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <label class="form-label fw-semibold">Leave Type <span class="text-danger">*</span></label>
-            <select class="form-select" th:field="*{leaveType.id}" required>
-                <option value="">-- Select --</option>
-                <option th:each="leaveType : ${leaveTypes}" th:value="${leaveType.id}"
-                        th:text="${leaveType.name}"></option>
-            </select>
-        </div>
-    </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Leave Type <span
+                                            class="text-danger">*</span></label>
+                                    <select class="form-select" th:field="*{leaveType.id}" required>
+                                        <option value="">-- Select --</option>
+                                        <option th:each="leaveType : ${leaveTypes}" th:value="${leaveType.id}"
+                                            th:text="${leaveType.name}"></option>
+                                    </select>
+                                </div>
+                            </div>
 
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <label class="form-label fw-semibold">From Date <span class="text-danger">*</span></label>
-            <input type="date" class="form-control" th:field="*{startDate}" required>
-        </div>
-        <div class="col-md-6">
-            <label class="form-label fw-semibold">To Date <span class="text-danger">*</span></label>
-            <input type="date" class="form-control" th:field="*{endDate}" required>
-        </div>
-    </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">From Date <span
+                                            class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" th:field="*{startDate}" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">To Date <span
+                                            class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" th:field="*{endDate}" required>
+                                </div>
+                            </div>
 
-    <div class="mb-3">
-        <label class="form-label fw-semibold">Reason <span class="text-danger">*</span></label>
-        <textarea class="form-control" th:field="*{reason}" rows="3" required></textarea>
-    </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Reason <span class="text-danger">*</span></label>
+                                <textarea class="form-control" th:field="*{reason}" rows="3" required></textarea>
+                            </div>
 
-    <div class="mb-3">
-        <label class="form-label fw-semibold">Work Dissemination</label>
-        <textarea class="form-control" th:field="*{workDissemination}" rows="2"></textarea>
-    </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Work Dissemination</label>
+                                <textarea class="form-control" th:field="*{workDissemination}" rows="2"></textarea>
+                            </div>
 
-    <div class="mb-4">
-        <label class="form-label fw-semibold">Contact Details</label>
-        <input type="text" class="form-control" th:field="*{contactDetails}">
-    </div>
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold">Contact Details</label>
+                                <input type="text" class="form-control" th:field="*{contactDetails}">
+                            </div>
 
-    <div class="d-flex gap-2">
-        <button type="submit" class="btn btn-warning">
-            <i class="bi bi-save"></i> Save Changes
-        </button>
-        <a th:href="@{/employee/leaves}" class="btn btn-outline-secondary">Cancel</a>
-    </div>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-warning">
+                                    <i class="bi bi-save"></i> Save Changes
+                                </button>
+                                <a th:href="@{/employee/leaves}" class="btn btn-outline-secondary">Cancel</a>
+                            </div>
 
-    <div class="mt-4">
-        <h6 class="fw-semibold">Public Holidays</h6>
-        <ul class="small text-muted">
-            <li th:each="holiday : ${publicHolidays}">
-                <span th:text="${holiday.holidayDate}"></span> -
-                <span th:text="${holiday.description}"></span>
-            </li>
-        </ul>
-    </div>
-</form>
+                            <div class="mt-4">
+                                <h6 class="fw-semibold">Public Holidays</h6>
+                                <ul class="small text-muted">
+                                    <li th:each="holiday : ${publicHolidays}">
+                                        <span th:text="${holiday.holidayDate}"></span> -
+                                        <span th:text="${holiday.description}"></span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </form>
