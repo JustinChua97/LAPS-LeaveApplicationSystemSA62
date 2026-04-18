@@ -74,7 +74,6 @@ public class EmployeeController {
             return "employee/leave-apply";
         }
     }
-
     // =========== LEAVE HISTORY ===========
 
     @GetMapping("/leaves")

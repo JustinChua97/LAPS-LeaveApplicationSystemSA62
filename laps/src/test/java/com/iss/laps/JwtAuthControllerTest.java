@@ -5,9 +5,11 @@ import com.iss.laps.config.JwtConfig;
 import com.iss.laps.security.JwtService;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -50,6 +52,11 @@ class JwtAuthControllerTest {
 
     private static final String TOKEN_URL = "/api/v1/auth/token";
     private static final String LEAVES_URL = "/api/v1/leaves/my";
+
+    @BeforeEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     // -----------------------------------------------------------------------
     // AC1 — valid credentials → 200 + JWT body with correct structure
