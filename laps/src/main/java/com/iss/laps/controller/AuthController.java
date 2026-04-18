@@ -44,6 +44,6 @@ public class AuthController {
         if (authorities.stream().anyMatch(a -> a.getAuthority().equals("ROLE_MANAGER"))) {
             return "redirect:/manager/dashboard";
         }
-        return "redirect:/employee/dashboard";
+        return "redirect:/app";
     }
 }
