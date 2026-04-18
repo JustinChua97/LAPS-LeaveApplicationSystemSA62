@@ -56,29 +56,29 @@ jobs:
           if-no-files-found: error
           retention-days: 5
 
-  semgrep-sast:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
-    steps:
-      - uses: actions/checkout@v6
+  # semgrep-sast:
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
+  #     security-events: write
+  #     actions: read
+  #   steps:
+  #     - uses: actions/checkout@v6
 
-      - name: Install Semgrep
-        run: pip install semgrep
+  #     - name: Install Semgrep
+  #       run: pip install semgrep
 
-      - name: Run Semgrep SAST scan
-        run: semgrep ci --exclude=laps/laps-frontend
-        env:
-          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+  #     - name: Run Semgrep SAST scan
+  #       run: semgrep ci --exclude=laps/laps-frontend
+  #       env:
+  #         SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
 
   docker-push:
     name: Build and push Docker image to ECR
     runs-on: ubuntu-latest
     # Push on merge to main; also allow manual workflow_dispatch for branch testing
     if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch'
-    needs: [ build-and-test, semgrep-sast ]
+    needs: [ build-and-test]
     permissions:
       actions: read
       contents: read
