@@ -68,6 +68,9 @@ public class AdminService {
             throw new LeaveApplicationException("This leave type cannot be deleted.");
         }
         
+        // Delete all entitlements for this leave type first (to avoid foreign key constraint violation)
+        leaveEntitlementRepository.deleteByLeaveType(leaveType);
+        
         leaveTypeRepo.deleteById(id);
     }
 

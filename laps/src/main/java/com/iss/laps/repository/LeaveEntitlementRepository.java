@@ -18,4 +18,6 @@ public interface LeaveEntitlementRepository extends JpaRepository<LeaveEntitleme
     List<LeaveEntitlement> findByEmployeeAndYear(Employee employee, int year);
 
     List<LeaveEntitlement> findByYear(int year);
+
+    void deleteByLeaveType(LeaveType leaveType);
 }
