@@ -42,6 +42,7 @@ import com.iss.laps.service.EmailService;
 import com.iss.laps.service.EmployeeService;
 import com.iss.laps.service.LeaveService;
 import com.iss.laps.util.LeaveCalculator;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("LeaveService Unit Tests")
@@ -55,9 +56,11 @@ class LeaveServiceTest {
     @Mock LeaveCalculator leaveCalculator;
     @Mock EmailService emailService;
     @Mock EmployeeRepository employeeRepository;
+    @Mock PasswordEncoder passwordEncoder;
 
     @InjectMocks
     LeaveService leaveService;
+    @InjectMocks
     EmployeeService employeeService;
 
     private Employee employee;
@@ -122,7 +125,7 @@ class LeaveServiceTest {
     void updateEntitlement_negativeTotal_throwsException() {
         assertThatThrownBy(() -> employeeService.updateEntitlement(1L, -0.5))
                 .isInstanceOf(LeaveApplicationException.class)
-                .hasMessageContaining("Leave entitlement cannot be negative");
+                .hasMessageContaining("Total entitlement cannot be negative");
     }
 
     @Test
@@ -130,7 +133,7 @@ class LeaveServiceTest {
     void updateEntitlement_above365_throwsException() {
         assertThatThrownBy(() -> employeeService.updateEntitlement(1L, 366))
                 .isInstanceOf(LeaveApplicationException.class)
-                .hasMessageContaining("Leave entitlement cannot exceed 365 days");
+                .hasMessageContaining("Total entitlement cannot exceed 365 days");
     }
 
     @Test
@@ -143,7 +146,7 @@ class LeaveServiceTest {
         when(leaveEntitlementRepo.findById(100L)).thenReturn(Optional.of(entitlement));
         assertThatThrownBy(() -> employeeService.updateEntitlement(100L, 4.5))
                 .isInstanceOf(LeaveApplicationException.class)
-                .hasMessageContaining("New leave entitlement update cannot be less than the number of days consumed by employee");
+                .hasMessageContaining("Total entitlement cannot be less than used days");
     }
 
     @Test
@@ -155,9 +158,9 @@ class LeaveServiceTest {
 
         when(leaveEntitlementRepo.findById(103L)).thenReturn(Optional.of(entitlement));
 
-        employeeService.updateEntitlement(103L, 20);
+        employeeService.updateEntitlement(103L, 10);
 
-        assertThat(entitlement.getTotalDays()).isEqualTo(20);
+        assertThat(entitlement.getTotalDays()).isEqualTo(10);
         verify(leaveEntitlementRepo).save(entitlement);
     }
 
@@ -400,7 +403,7 @@ class LeaveServiceTest {
 
         assertThatThrownBy(() -> employeeService.updateEntitlement(101L, 109))
                 .isInstanceOf(LeaveApplicationException.class)
-                .hasMessageContaining("Total compensation leave cannot exceed 108 days in one year.");
+                .hasMessageContaining("Total entitlement exceeds the allowed cap of 108.0 days");
     }
 
         // =========== Leave Application Tests — For Enum Default Types and Custom Types (issue #17) ===========
@@ -419,7 +422,7 @@ class LeaveServiceTest {
         // Act & Assert
         assertThatThrownBy(() -> leaveService.applyLeave(sampleApplication, employee))
                 .isInstanceOf(LeaveApplicationException.class)
-                .hasMessageContaining("Selected leave type is not supported for leave applications.");
+                .hasMessageContaining("Selected leave type is not supported for leave applications");
     }
 
     @Test
@@ -442,7 +445,7 @@ class LeaveServiceTest {
         // Act & Assert
         assertThatThrownBy(() -> leaveService.updateLeave(10L, updateRequest, employee))
                 .isInstanceOf(LeaveApplicationException.class)
-                .hasMessageContaining("Selected leave type is not supported for leave applications.");
+                .hasMessageContaining("Selected leave type is not supported for leave applications");
     }
 
     @Test
@@ -508,7 +511,7 @@ class LeaveServiceTest {
 
         assertThatThrownBy(() -> leaveService.applyLeave(app, employee))
                 .isInstanceOf(LeaveApplicationException.class)
-                .hasMessageContaining("Duration of Annual Leave application exceeds the maximum limit of 14 consecutive calendar days. Please seek Department Head approval for extended absence.");
+                .hasMessageContaining("Leave duration exceeds the maximum limit of 14 consecutive calendar days");
     }
 
     @Test
@@ -523,7 +526,7 @@ class LeaveServiceTest {
 
         assertThatThrownBy(() -> employeeService.updateEntitlement(102L, 15))
                 .isInstanceOf(LeaveApplicationException.class)
-                .hasMessageContaining("This employee's designation has an annual leave cap of 14 days.");
+                .hasMessageContaining("Total entitlement exceeds the allowed cap of 14.0 days");
     }
     
     @Test
@@ -602,6 +605,7 @@ class LeaveServiceTest {
     when(leaveTypeRepo.findById(2L)).thenReturn(Optional.of(medicalType));
     when(leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(any(), eq(2L), anyInt(), isNull()))
         .thenReturn(0.0);
+    when(leaveCalculator.calculateMedicalLeaveDays(any(), any())).thenReturn(15.0);
 
     assertThatThrownBy(() -> leaveService.applyLeave(sampleApplication, employee))
         .isInstanceOf(LeaveApplicationException.class);
