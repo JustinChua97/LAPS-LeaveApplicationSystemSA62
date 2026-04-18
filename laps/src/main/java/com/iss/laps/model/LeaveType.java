@@ -49,4 +49,8 @@ public class LeaveType {
         this.halfDayAllowed = halfDayAllowed;
         this.defaultType = defaultType;
     }
+
+    public boolean isDefault() {
+    return this.defaultType != null;
+    }
 }

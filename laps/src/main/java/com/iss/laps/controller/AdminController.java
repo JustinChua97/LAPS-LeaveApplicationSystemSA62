@@ -213,10 +213,18 @@ public class AdminController {
     }
 
     @PostMapping("/leave-types/new")
-    public String createLeaveType(@ModelAttribute("leaveType") LeaveType leaveType,
-                                   RedirectAttributes redirectAttrs) {
-        adminService.saveLeaveType(leaveType);
-        redirectAttrs.addFlashAttribute("success", "Leave type created.");
+    public String createLeaveType(@Valid LeaveType leaveType, BindingResult result, RedirectAttributes redirectAttrs) {
+        if (result.hasErrors()) {
+            return "admin/leave-types-form";
+        }
+        
+        try {
+            adminService.createLeaveType(leaveType);  // Use the new method
+            redirectAttrs.addFlashAttribute("success", "Leave type created successfully!");
+        } catch (LeaveApplicationException e) {
+            redirectAttrs.addFlashAttribute("error", e.getMessage());
+        }
+        
         return "redirect:/admin/leave-types";
     }
 
@@ -241,12 +249,11 @@ public class AdminController {
     }
 
 
-
     @PostMapping("/leave-types/{id}/delete")
     public String deleteLeaveType(@PathVariable Long id, RedirectAttributes redirectAttrs) {
         try {
             adminService.deleteLeaveType(id);
-            redirectAttrs.addFlashAttribute("success", "Leave type deleted.");
+            redirectAttrs.addFlashAttribute("success", "Leave type deleted successfully.");
         } catch (LeaveApplicationException e) {
             redirectAttrs.addFlashAttribute("error", e.getMessage());
         }

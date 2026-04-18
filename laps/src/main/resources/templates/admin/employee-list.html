@@ -43,11 +43,11 @@
 							   <a th:unless="${emp.role.name() == 'ROLE_ADMIN'}"
 							      th:href="@{'/admin/employees/' + ${emp.id} + '/entitlements'}"
                                class="btn btn-xs btn-outline-info btn-sm">Entitlements</a>
-                            <button type="button" class="btn btn-xs btn-outline-danger btn-sm"
-                                    th:if="${emp.active and emp.role.name() != 'ROLE_ADMIN'}"
-                                    th:data-url="@{'/admin/employees/' + ${emp.id} + '/deactivate'}"
-                                    data-confirm="Deactivate this employee?"
-                                    onclick="confirmPost(this)">Deactivate</button>
+                            <form method="POST" th:action="@{'/admin/employees/' + ${emp.id} + '/deactivate'}" style="display: inline;">
+                                <button type="submit" class="btn btn-xs btn-outline-danger btn-sm"
+                                        th:if="${emp.active and emp.role.name() != 'ROLE_ADMIN'}"
+                                        onclick="return confirm('Deactivate this employee?');">Deactivate</button>
+                            </form>
                         </td>
                     </tr>
                 </tbody>

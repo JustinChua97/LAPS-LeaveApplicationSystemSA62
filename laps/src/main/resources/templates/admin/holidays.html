@@ -34,10 +34,10 @@
                         <td th:text="${h.holidayDate.dayOfWeek.getDisplayName(T(java.time.format.TextStyle).FULL, T(java.util.Locale).ENGLISH)}"></td>
                         <td th:text="${h.description}"></td>
                         <td>
-                            <button type="button" class="btn btn-outline-danger btn-sm"
-                                    th:data-url="@{'/admin/holidays/' + ${h.id} + '/delete'}"
-                                    data-confirm="Delete this public holiday?"
-                                    onclick="confirmPost(this)">Delete</button>
+                            <form method="POST" th:action="@{'/admin/holidays/' + ${holiday.id} + '/delete'}" style="display: inline;">
+                                <button type="submit" class="btn btn-outline-danger btn-sm"
+                                        onclick="return confirm('Delete this holiday?');">Delete</button>
+                            </form>
                         </td>
                     </tr>
                 </tbody>

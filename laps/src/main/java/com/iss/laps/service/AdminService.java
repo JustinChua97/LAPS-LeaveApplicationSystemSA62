@@ -8,8 +8,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.iss.laps.exception.LeaveApplicationException;
 import com.iss.laps.exception.ResourceNotFoundException;
+import com.iss.laps.model.Employee;
+import com.iss.laps.model.LeaveEntitlement;
 import com.iss.laps.model.LeaveType;
 import com.iss.laps.model.PublicHoliday;
+import com.iss.laps.model.Role;
+import com.iss.laps.repository.EmployeeRepository;
+import com.iss.laps.repository.LeaveEntitlementRepository;
 import com.iss.laps.repository.LeaveTypeRepository;
 import com.iss.laps.repository.PublicHolidayRepository;
 
@@ -19,6 +24,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AdminService {
 
+    private final EmployeeRepository employeeRepository;
+    private final LeaveEntitlementRepository leaveEntitlementRepository;
     private final LeaveTypeRepository leaveTypeRepo;
     private final PublicHolidayRepository publicHolidayRepo;
 
@@ -51,14 +58,58 @@ public class AdminService {
 
     @Transactional
     public void deleteLeaveType(Long id) {
-        LeaveType existingLeaveType = leaveTypeRepo.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Leave type not found"));
-            
-        if (existingLeaveType.getDefaultType() != null) {
-            throw new LeaveApplicationException("Cannot delete a default leave type");
+        LeaveType leaveType = findLeaveTypeById(id);
+        
+        if (leaveType.isActive()) {
+            throw new LeaveApplicationException("Cannot delete an active leave type. Please deactivate it first.");
         }
-
+        
+        if (leaveType.isDefault()) {
+            throw new LeaveApplicationException("This leave type cannot be deleted.");
+        }
+        
         leaveTypeRepo.deleteById(id);
+    }
+
+    @Transactional
+    public void createLeaveType(LeaveType leaveType) {
+    leaveTypeRepo.save(leaveType);
+    
+    // Auto-create entitlements for all existing non-admin employees
+    int currentYear = LocalDate.now().getYear();
+    List<Employee> allEmployees = employeeRepository.findAll();
+    
+    for (Employee emp : allEmployees) {
+        // Skip ROLE_ADMIN and employees without designation
+        if (emp.getRole() == Role.ROLE_ADMIN || emp.getDesignation() == null) {
+            continue;
+        }
+        
+        // Calculate entitled days based on leave type
+        double days = 0.0;
+        if (leaveType.getDefaultType() != null) {
+            switch (leaveType.getDefaultType()) {
+                case ANNUAL:
+                    days = emp.getDesignation().getAnnualLeaveEntitlement();
+                    break;
+                case MEDICAL:
+                    days = 14;
+                    break;
+                case HOSPITALISATION:
+                    days = 46;
+                    break;
+                case COMPENSATION:
+                    days = 0;
+                    break;
+                default:
+                    break;
+            }
+        }
+        
+        // Create entitlement
+        LeaveEntitlement ent = new LeaveEntitlement(emp, leaveType, currentYear, days);
+        leaveEntitlementRepository.save(ent);
+    }
     }
 
     // =========== PUBLIC HOLIDAYS ===========
