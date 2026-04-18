@@ -31,11 +31,11 @@ class AuthControllerTest {
 
     @Test
     @WithMockUser(roles = "EMPLOYEE")
-    @DisplayName("ROLE_EMPLOYEE GET / redirects to /employee/dashboard")
+    @DisplayName("ROLE_EMPLOYEE GET / redirects to /app")
     void root_asEmployee_redirectsToEmployeeDashboard() throws Exception {
         mockMvc.perform(get("/"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/employee/dashboard"));
+                .andExpect(redirectedUrl("/app"));
     }
 
     @Test
