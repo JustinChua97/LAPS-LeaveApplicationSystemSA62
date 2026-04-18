@@ -170,6 +170,12 @@ public class DataInitializer implements ApplicationRunner {
             la.setManagerComment("Approved");
             la.setHalfDay(false);
             leaveApplicationRepository.save(la);
+
+            entitlementRepository.findByEmployeeAndLeaveTypeAndYear(employee, leaveType, 2026)
+                    .ifPresent(ent -> {
+                        ent.setUsedDays(ent.getUsedDays() + la.getDuration());
+                        entitlementRepository.save(ent);
+                    });
         }
     }
 

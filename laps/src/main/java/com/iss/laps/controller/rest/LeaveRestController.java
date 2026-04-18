@@ -1,5 +1,7 @@
 package com.iss.laps.controller.rest;
 
+import com.iss.laps.dto.EntitlementDto;
+import com.iss.laps.dto.LeaveDto;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -30,14 +32,24 @@ public class LeaveRestController {
     private final EmployeeService employeeService;
     private final SecurityUtils securityUtils;
 
+    // returns name + designation for the Angular dashboard header
+    @GetMapping("/me")
+    public ResponseEntity<Map<String, String>> getMe() {
+        var employee = securityUtils.getCurrentEmployee();
+        return ResponseEntity.ok(Map.of(
+                "fullName",    employee.getName(),
+                "designation", employee.getDesignation() != null ? employee.getDesignation().name() : ""
+        ));
+    }
+
     /**
      * GET /api/v1/leaves/my - Get current user's leave history
      */
     @GetMapping("/leaves/my")
-    public ResponseEntity<List<Map<String, Object>>> getMyLeaves() {
+    public ResponseEntity<List<LeaveDto>> getMyLeaves() {
         var employee = securityUtils.getCurrentEmployee();
         return ResponseEntity.ok(leaveService.getMyLeaveHistory(employee).stream()
-                .map(this::toLeaveResponse)
+                .map(LeaveDto::from)
                 .toList());
     }
 
@@ -54,11 +66,11 @@ public class LeaveRestController {
      * GET /api/v1/leaves/entitlements - Get current user's entitlements
      */
     @GetMapping("/leaves/entitlements")
-    public ResponseEntity<List<Map<String, Object>>> getMyEntitlements() {
+    public ResponseEntity<List<EntitlementDto>> getMyEntitlements() {
         var employee = securityUtils.getCurrentEmployee();
         int year = LocalDate.now().getYear();
         return ResponseEntity.ok(employeeService.getEntitlements(employee, year).stream()
-                .map(this::toEntitlementResponse)
+                .map(EntitlementDto::from)
                 .toList());
     }
 
@@ -146,15 +158,4 @@ public class LeaveRestController {
         return map;
     }
 
-    private Map<String, Object> toEntitlementResponse(LeaveEntitlement entitlement) {
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("id", entitlement.getId());
-        map.put("leaveTypeId", entitlement.getLeaveType().getId());
-        map.put("leaveType", entitlement.getLeaveType().getName());
-        map.put("year", entitlement.getYear());
-        map.put("totalDays", entitlement.getTotalDays());
-        map.put("usedDays", entitlement.getUsedDays());
-        map.put("remainingDays", entitlement.getRemainingDays());
-        return map;
-    }
 }
