@@ -67,30 +67,46 @@ public class LeaveRestController {
      */
     @GetMapping("/movement")
     public ResponseEntity<Map<String, Object>> getMovement(
-            @RequestParam(defaultValue = "0") int year,
-            @RequestParam(defaultValue = "0") int month) {
-        LocalDate now = LocalDate.now();
-        int y = year == 0 ? now.getYear() : year;
-        int m = month == 0 ? now.getMonthValue() : month;
-
-        List<LeaveApplication> leaves = leaveService.getApprovedLeaveInMonth(y, m);
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("year", y);
-        result.put("month", m);
-        result.put("leaves", leaves.stream().map(la -> {
-            Map<String, Object> map = new HashMap<>();
-            map.put("id", la.getId());
-            map.put("employee", la.getEmployee().getName());
-            map.put("leaveType", la.getLeaveType().getName());
-            map.put("startDate", la.getStartDate().toString());
-            map.put("endDate", la.getEndDate().toString());
-            map.put("duration", la.getDuration());
-            return map;
-        }).toList());
-
-        return ResponseEntity.ok(result);
+        @RequestParam(defaultValue = "0") int year,
+        @RequestParam(defaultValue = "0") int month) {
+    
+    // Validate year and month parameters (issue #41)
+    LocalDate now = LocalDate.now();
+    int y = year == 0 ? now.getYear() : year;
+    int m = month == 0 ? now.getMonthValue() : month;
+    
+    // Validate year range (2020-2035)
+    if (y < 2020 || y > 2035) {
+        Map<String, Object> error = new HashMap<>();
+        error.put("error", "Year must be between 2020 and 2035");
+        return ResponseEntity.badRequest().body(error);
     }
+    
+    // Validate month range (1-12)
+    if (m < 1 || m > 12) {
+        Map<String, Object> error = new HashMap<>();
+        error.put("error", "Month must be between 1 and 12");
+        return ResponseEntity.badRequest().body(error);
+    }
+
+    List<LeaveApplication> leaves = leaveService.getApprovedLeaveInMonth(y, m);
+
+    Map<String, Object> result = new HashMap<>();
+    result.put("year", y);
+    result.put("month", m);
+    result.put("leaves", leaves.stream().map(la -> {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", la.getId());
+        map.put("employee", la.getEmployee().getName());
+        map.put("leaveType", la.getLeaveType().getName());
+        map.put("startDate", la.getStartDate().toString());
+        map.put("endDate", la.getEndDate().toString());
+        map.put("duration", la.getDuration());
+        return map;
+    }).toList());
+
+    return ResponseEntity.ok(result);
+    }  
 
     /**
      * GET /api/v1/leave-types - Get all default active leave types

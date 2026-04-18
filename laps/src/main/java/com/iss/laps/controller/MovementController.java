@@ -24,8 +24,36 @@ public class MovementController {
                                     @RequestParam(required = false) Integer month,
                                     Model model) {
         LocalDate now = LocalDate.now();
-        int selectedYear = (year != null) ? year : now.getYear();
-        int selectedMonth = (month != null) ? month : now.getMonthValue();
+        int selectedYear = now.getYear();
+        int selectedMonth = now.getMonthValue();
+
+        // Add default attributes first
+        model.addAttribute("monthNames", new String[]{
+                "", "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"
+        });
+
+        if (year != null) {
+        if (year < 2020 || year > 2035) {
+                model.addAttribute("error", "Year must be between 2020 and 2035");
+                model.addAttribute("selectedYear", selectedYear);
+                model.addAttribute("selectedMonth", selectedMonth);
+                model.addAttribute("leaves", List.of());
+                return "common/movement-register";
+        }
+        selectedYear = year;
+        }
+
+        if (month != null) {
+        if (month < 1 || month > 12) {
+                model.addAttribute("error", "Month must be between 1 and 12");
+                model.addAttribute("selectedYear", selectedYear);
+                model.addAttribute("selectedMonth", selectedMonth);
+                model.addAttribute("leaves", List.of());
+                return "common/movement-register";
+        }
+        selectedMonth = month;
+        }
 
         List<LeaveApplication> leaves = leaveService.getApprovedLeaveInMonth(selectedYear, selectedMonth);
 
@@ -37,10 +65,6 @@ public class MovementController {
                 new int[]{5, 0}, new int[]{6, 0}, new int[]{7, 0}, new int[]{8, 0},
                 new int[]{9, 0}, new int[]{10, 0}, new int[]{11, 0}, new int[]{12, 0}
         ));
-        model.addAttribute("monthNames", new String[]{
-                "", "January", "February", "March", "April", "May", "June",
-                "July", "August", "September", "October", "November", "December"
-        });
 
         return "common/movement-register";
     }

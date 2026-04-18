@@ -58,21 +58,19 @@ public class EmployeeController {
     @GetMapping("/leaves/apply")
     public String applyLeaveForm(Model model) {
         model.addAttribute("leaveApplication", new LeaveApplication());
-        model.addAttribute("leaveTypes", leaveService.getDefaultActiveLeaveTypes());
-        model.addAttribute("today", LocalDate.now());
+        populateLeaveFormModel(model); // handles leaveTypes, today, publicHolidays
         return "employee/leave-apply";
     }
 
     @PostMapping("/leaves/apply")
     public String applyLeave(@Valid @ModelAttribute("leaveApplication") LeaveApplication application,
-                              BindingResult result,
-                              Model model,
-                              RedirectAttributes redirectAttrs) {
+            BindingResult result,
+            Model model,
+            RedirectAttributes redirectAttrs) {
         Employee employee = securityUtils.getCurrentEmployee();
 
         if (result.hasErrors()) {
-            model.addAttribute("leaveTypes", leaveService.getDefaultActiveLeaveTypes());
-            model.addAttribute("today", LocalDate.now());
+            populateLeaveFormModel(model);
             return "employee/leave-apply";
         }
 
@@ -82,26 +80,24 @@ public class EmployeeController {
             return "redirect:/employee/leaves";
         } catch (LeaveApplicationException e) {
             model.addAttribute("error", e.getMessage());
-            model.addAttribute("leaveTypes", leaveService.getDefaultActiveLeaveTypes());
-            model.addAttribute("today", LocalDate.now());
+            populateLeaveFormModel(model);
             return "employee/leave-apply";
         }
     }
-
     // =========== LEAVE HISTORY ===========
 
     @GetMapping("/leaves")
     public String leaveHistory(@RequestParam(defaultValue = "0") int page,
-                                @RequestParam(defaultValue = "10") int size,
-                                Model model) {
+            @RequestParam(defaultValue = "10") int size,
+            Model model) {
         Employee employee = securityUtils.getCurrentEmployee();
-                // Validate pagination parameters (issue #45)
-            if (page < 0) {
-                 page = 0;
-            }
-            if (size != 10 && size != 20 && size != 25) {
-                size = 10;
-            }
+        // Validate pagination parameters (issue #45)
+        if (page < 0) {
+            page = 0;
+        }
+        if (size != 10 && size != 20 && size != 25) {
+            size = 10;
+        }
         Pageable pageable = PageRequest.of(page, size);
         Page<LeaveApplication> leavePage = leaveService.getMyLeaveHistoryPaged(employee, pageable);
 
@@ -135,17 +131,16 @@ public class EmployeeController {
         }
 
         model.addAttribute("leaveApplication", leave);
-        model.addAttribute("leaveTypes", leaveService.getDefaultActiveLeaveTypes());
-        model.addAttribute("today", LocalDate.now());
+        populateLeaveFormModel(model);
         return "employee/leave-edit";
     }
 
     @PostMapping("/leaves/{id}/edit")
     public String updateLeave(@PathVariable Long id,
-                               @Valid @ModelAttribute("leaveApplication") LeaveApplication updated,
-                               BindingResult result,
-                               Model model,
-                               RedirectAttributes redirectAttrs) {
+            @Valid @ModelAttribute("leaveApplication") LeaveApplication updated,
+            BindingResult result,
+            Model model,
+            RedirectAttributes redirectAttrs) {
         Employee employee = securityUtils.getCurrentEmployee();
 
         if (result.hasErrors()) {
@@ -205,9 +200,9 @@ public class EmployeeController {
 
     @PostMapping("/compensation/claim")
     public String submitCompensationClaim(@Valid @ModelAttribute("claim") CompensationClaim claim,
-                                           BindingResult result,
-                                           Model model,
-                                           RedirectAttributes redirectAttrs) {
+            BindingResult result,
+            Model model,
+            RedirectAttributes redirectAttrs) {
         if (result.hasErrors()) {
             Employee employee = securityUtils.getCurrentEmployee();
             model.addAttribute("myClaims", leaveService.getMyCompensationClaims(employee));
@@ -223,4 +218,13 @@ public class EmployeeController {
         }
         return "redirect:/employee/compensation/claim";
     }
+    // =========== PRIVATE HELPERS ===========
+
+    private void populateLeaveFormModel(Model model) {
+        int year = LocalDate.now().getYear();
+        model.addAttribute("leaveTypes", leaveService.getDefaultActiveLeaveTypes());
+        model.addAttribute("today", LocalDate.now());
+        model.addAttribute("publicHolidays", leaveService.getPublicHolidaysForYear(year));
+    }
+
 }

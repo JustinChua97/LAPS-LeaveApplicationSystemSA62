@@ -69,7 +69,8 @@ public class LeaveService {
         LeaveApplication existing = findByIdAndEmployee(id, employee);
 
         if (!existing.isEditable()) {
-            throw new LeaveApplicationException("Leave application cannot be updated in status: " + existing.getStatus());
+            throw new LeaveApplicationException(
+                    "Leave application cannot be updated in status: " + existing.getStatus());
         }
 
         existing.setLeaveType(resolveLeaveType(updated));
@@ -94,7 +95,8 @@ public class LeaveService {
     public void deleteLeave(Long id, Employee employee) {
         LeaveApplication existing = findByIdAndEmployee(id, employee);
         if (!existing.isDeletable()) {
-            throw new LeaveApplicationException("Leave application cannot be deleted in status: " + existing.getStatus());
+            throw new LeaveApplicationException(
+                    "Leave application cannot be deleted in status: " + existing.getStatus());
         }
         existing.setStatus(LeaveStatus.DELETED);
         leaveAppRepo.save(existing);
@@ -104,7 +106,8 @@ public class LeaveService {
     public void cancelLeave(Long id, Employee employee) {
         LeaveApplication existing = findByIdAndEmployee(id, employee);
         if (!existing.isCancellable()) {
-            throw new LeaveApplicationException("Leave can only be cancelled when Approved. Current status: " + existing.getStatus());
+            throw new LeaveApplicationException(
+                    "Leave can only be cancelled when Approved. Current status: " + existing.getStatus());
         }
         existing.setStatus(LeaveStatus.CANCELLED);
         leaveAppRepo.save(existing);
@@ -172,6 +175,15 @@ public class LeaveService {
         return la;
     }
 
+    public LeaveApplication findByIdForManager(Long id, Employee manager) {
+        LeaveApplication leave = findById(id);
+        if (leave.getEmployee().getManager() == null ||
+                !leave.getEmployee().getManager().getId().equals(manager.getId())) {
+            throw new LeaveApplicationException("Access denied: not your subordinate's leave.");
+        }
+        return leave;
+    }
+
     public List<LeaveApplication> getMyLeaveHistory(Employee employee) {
         return leaveAppRepo.findByEmployeeAndYear(employee, LocalDate.now().getYear());
     }
@@ -210,6 +222,11 @@ public class LeaveService {
     public List<LeaveApplication> getSubordinateLeaveDuringPeriod(Employee manager, LocalDate start, LocalDate end) {
         return leaveAppRepo.findSubordinateLeaveDuringPeriod(manager, start, end);
     }
+    // =========== HOLIDAY LOOKUP ===========
+
+    public List<PublicHoliday> getPublicHolidaysForYear(int year) {
+        return publicHolidayRepo.findByYear(year);
+    }
 
     // =========== COMPENSATION CLAIM ===========
 
@@ -220,7 +237,7 @@ public class LeaveService {
         }
         LocalDate overtimeDate = claim.getOvertimeDate();
         LocalDate startOfMonth = overtimeDate.withDayOfMonth(1);
-        LocalDate endOfMonth   = overtimeDate.withDayOfMonth(overtimeDate.lengthOfMonth());
+        LocalDate endOfMonth = overtimeDate.withDayOfMonth(overtimeDate.lengthOfMonth());
         int monthlyHours = compClaimRepo.sumOvertimeHoursByEmployeeAndMonth(
                 employee, startOfMonth, endOfMonth);
         if (monthlyHours + claim.getOvertimeHours() > 72) {
@@ -455,7 +472,8 @@ public class LeaveService {
 
     private void deductEntitlement(LeaveApplication application, Employee employee) {
         LeaveType leaveType = application.getLeaveType();
-        leaveEntitlementRepo.findByEmployeeAndLeaveTypeAndYear(employee, leaveType, application.getStartDate().getYear())
+        leaveEntitlementRepo
+                .findByEmployeeAndLeaveTypeAndYear(employee, leaveType, application.getStartDate().getYear())
                 .ifPresent(ent -> {
                     ent.setUsedDays(ent.getUsedDays() + application.getDuration());
                     leaveEntitlementRepo.save(ent);
@@ -464,7 +482,8 @@ public class LeaveService {
 
     private void restoreEntitlement(LeaveApplication application, Employee employee) {
         LeaveType leaveType = application.getLeaveType();
-        leaveEntitlementRepo.findByEmployeeAndLeaveTypeAndYear(employee, leaveType, application.getStartDate().getYear())
+        leaveEntitlementRepo
+                .findByEmployeeAndLeaveTypeAndYear(employee, leaveType, application.getStartDate().getYear())
                 .ifPresent(ent -> {
                     ent.setUsedDays(Math.max(0, ent.getUsedDays() - application.getDuration()));
                     leaveEntitlementRepo.save(ent);
@@ -510,7 +529,7 @@ public class LeaveService {
 
     private boolean isSubordinate(Employee employee, Employee manager) {
         return employee.getManager() != null &&
-               employee.getManager().getId().equals(manager.getId());
+                employee.getManager().getId().equals(manager.getId());
     }
 
     /**

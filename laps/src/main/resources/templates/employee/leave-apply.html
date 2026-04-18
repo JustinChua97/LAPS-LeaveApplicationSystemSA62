@@ -1,121 +1,132 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{common/layout :: layout(~{::section})}">
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{common/layout :: layout(~{::section})}">
+
 <body>
-<section th:fragment="content">
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="bi bi-file-earmark-plus"></i> Apply for Leave</h5>
-                </div>
-                <div class="card-body">
-
-                    <div th:if="${error}" class="alert alert-danger">
-                        <i class="bi bi-exclamation-triangle-fill"></i> <span th:text="${error}"></span>
+    <section th:fragment="content">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-file-earmark-plus"></i> Apply for Leave</h5>
                     </div>
+                    <div class="card-body">
 
-                    <form th:action="@{/employee/leaves/apply}" th:object="${leaveApplication}" method="post">
-                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                        <div th:if="${error}" class="alert alert-danger">
+                            <i class="bi bi-exclamation-triangle-fill"></i> <span th:text="${error}"></span>
+                        </div>
 
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">Leave Type <span class="text-danger">*</span></label>
-                                <select class="form-select" th:field="*{leaveType.id}" required id="leaveTypeSelect">
-                                            <option value="">-- Select Leave Type --</option>
-                                            <option th:each="leaveType : ${leaveTypes}"
-                                                    th:value="${leaveType.id}"
-                                                    th:text="${leaveType.name}"
-                                                    th:data-code="${leaveType.defaultType}">
-                                            </option>
-                                        </select>
-                                <div class="invalid-feedback" th:if="${#fields.hasErrors('leaveType')}">
-                                    <span th:errors="*{leaveType}"></span>
+                        <form th:action="@{/employee/leaves/apply}" th:object="${leaveApplication}" method="post">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Leave Type <span
+                                            class="text-danger">*</span></label>
+                                    <select class="form-select" th:field="*{leaveType.id}" required
+                                        id="leaveTypeSelect">
+                                        <option value="">-- Select Leave Type --</option>
+                                        <option th:each="leaveType : ${leaveTypes}" th:value="${leaveType.id}"
+                                            th:text="${leaveType.name}" th:data-code="${leaveType.defaultType}"></option>
+                                    </select>
+                                    <div class="invalid-feedback" th:if="${#fields.hasErrors('leaveType')}">
+                                        <span th:errors="*{leaveType}"></span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Half-day option (shown only for Compensation) -->
-                        <div class="row mb-3" id="halfDayRow" style="display:none!important;">
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox"
-                                           th:field="*{halfDay}" id="halfDayCheck">
-                                    <label class="form-check-label fw-semibold" for="halfDayCheck">Half Day</label>
+                            <!-- Half-day option (shown only for Compensation) -->
+                            <div class="row mb-3" id="halfDayRow" style="display:none!important;">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" th:field="*{halfDay}"
+                                            id="halfDayCheck">
+                                        <label class="form-check-label fw-semibold" for="halfDayCheck">Half Day</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4" id="halfDayTypeDiv" style="display:none;">
+                                    <select class="form-select" th:field="*{halfDayType}">
+                                        <option value="AM">AM (Morning)</option>
+                                        <option value="PM">PM (Afternoon)</option>
+                                    </select>
                                 </div>
                             </div>
-                            <div class="col-md-4" id="halfDayTypeDiv" style="display:none;">
-                                <select class="form-select" th:field="*{halfDayType}">
-                                    <option value="AM">AM (Morning)</option>
-                                    <option value="PM">PM (Afternoon)</option>
-                                </select>
-                            </div>
-                        </div>
 
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">From Date <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" th:field="*{startDate}"
-                                       th:min="${today}" required>
-                                <div class="invalid-feedback" th:if="${#fields.hasErrors('startDate')}">
-                                    <span th:errors="*{startDate}"></span>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">From Date <span
+                                            class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" th:field="*{startDate}" th:min="${today}"
+                                        required>
+                                    <div class="invalid-feedback" th:if="${#fields.hasErrors('startDate')}">
+                                        <span th:errors="*{startDate}"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">To Date <span
+                                            class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" th:field="*{endDate}" th:min="${today}"
+                                        required>
+                                    <div class="invalid-feedback" th:if="${#fields.hasErrors('endDate')}">
+                                        <span th:errors="*{endDate}"></span>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">To Date <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" th:field="*{endDate}"
-                                       th:min="${today}" required>
-                                <div class="invalid-feedback" th:if="${#fields.hasErrors('endDate')}">
-                                    <span th:errors="*{endDate}"></span>
-                                </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Reason <span class="text-danger">*</span></label>
+                                <textarea class="form-control" th:field="*{reason}" rows="3"
+                                    placeholder="Please provide reason for leave..." required></textarea>
                             </div>
-                        </div>
 
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Reason <span class="text-danger">*</span></label>
-                            <textarea class="form-control" th:field="*{reason}" rows="3"
-                                      placeholder="Please provide reason for leave..." required></textarea>
-                        </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Work Dissemination</label>
+                                <textarea class="form-control" th:field="*{workDissemination}" rows="2"
+                                    placeholder="Who will cover your work? (optional)"></textarea>
+                            </div>
 
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Work Dissemination</label>
-                            <textarea class="form-control" th:field="*{workDissemination}" rows="2"
-                                      placeholder="Who will cover your work? (optional)"></textarea>
-                        </div>
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold">Contact Details (if overseas)</label>
+                                <input type="text" class="form-control" th:field="*{contactDetails}"
+                                    placeholder="Phone/email if on overseas trip (optional)">
+                            </div>
 
-                        <div class="mb-4">
-                            <label class="form-label fw-semibold">Contact Details (if overseas)</label>
-                            <input type="text" class="form-control" th:field="*{contactDetails}"
-                                   placeholder="Phone/email if on overseas trip (optional)">
-                        </div>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-send"></i> Submit Application
+                                </button>
+                                <a th:href="@{/employee/leaves}" class="btn btn-outline-secondary">Cancel</a>
+                            </div>
+                            <div class="mt-4">
+                                <h6 class="fw-semibold">Public Holidays</h6>
+                                <ul class="small text-muted">
+                                    <li th:each="holiday : ${publicHolidays}">
+                                        <span th:text="${holiday.holidayDate}"></span> -
+                                        <span th:text="${holiday.description}"></span>
+                                    </li>
+                                </ul>
+                            </div>
 
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-send"></i> Submit Application
-                            </button>
-                            <a th:href="@{/employee/leaves}" class="btn btn-outline-secondary">Cancel</a>
-                        </div>
-                    </form>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <script th:src="@{/webjars/bootstrap/js/bootstrap.bundle.min.js}"></script>
-    <script>
-        const leaveTypeSelect = document.getElementById('leaveTypeSelect');
-        const halfDayRow = document.getElementById('halfDayRow');
-        const halfDayCheck = document.getElementById('halfDayCheck');
-        const halfDayTypeDiv = document.getElementById('halfDayTypeDiv');
+        <script>
+            const leaveTypeSelect = document.getElementById('leaveTypeSelect');
+            const halfDayRow = document.getElementById('halfDayRow');
+            const halfDayCheck = document.getElementById('halfDayCheck');
+            const halfDayTypeDiv = document.getElementById('halfDayTypeDiv');
 
-        leaveTypeSelect.addEventListener('change', function() {
-            const code = this.options[this.selectedIndex]?.dataset.code || '';
-            halfDayRow.style.display = code === 'COMPENSATION' ? '' : 'none';
-        });
-        halfDayCheck.addEventListener('change', function() {
-            halfDayTypeDiv.style.display = this.checked ? '' : 'none';
-        });
-    </script>
-</section>
+            leaveTypeSelect.addEventListener('change', function () {
+                const code = this.options[this.selectedIndex]?.dataset.code || '';
+                halfDayRow.style.display = code === 'COMPENSATION' ? '' : 'none';
+            });
+            halfDayCheck.addEventListener('change', function () {
+                halfDayTypeDiv.style.display = this.checked ? '' : 'none';
+            });
+        </script>
+    </section>
 </body>
+
 </html>
