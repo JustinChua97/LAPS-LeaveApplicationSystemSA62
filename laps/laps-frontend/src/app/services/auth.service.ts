@@ -3,6 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, EMPTY } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 
+const TOKEN_KEY = 'laps_token';
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
 
@@ -11,11 +13,22 @@ export class AuthService {
   private fullName    = '';
   private designation = '';
 
-  // called by APP_INITIALIZER on startup, redirects to /login if session is gone
+  fetchJwt(): Promise<void> {
+    sessionStorage.removeItem(TOKEN_KEY);
+    const request$ = this.http.get<{ accessToken: string }>('/auth/jwt').pipe(
+      tap(res => sessionStorage.setItem(TOKEN_KEY, res.accessToken)),
+      catchError(() => {
+        window.location.href = '/login';
+        return EMPTY;
+      })
+    );
+    return firstValueFrom(request$ as any) as Promise<void>;
+  }
+
   fetchCurrentUser(): Promise<void> {
     const request$ = this.http.get<{ fullName: string; designation: string }>('/api/v1/me').pipe(
       tap(user => {
-        this.fullName = user.fullName;
+        this.fullName    = user.fullName;
         this.designation = user.designation;
       }),
       catchError(() => {
@@ -26,8 +39,16 @@ export class AuthService {
     return firstValueFrom(request$ as any) as Promise<void>;
   }
 
+  clearToken(): void {
+    sessionStorage.removeItem(TOKEN_KEY);
+  }
+
+  getToken(): string | null {
+    return sessionStorage.getItem(TOKEN_KEY);
+  }
+
   isLoggedIn(): boolean {
-    return this.fullName !== '';
+    return this.getToken() !== null;
   }
 
   getFullName(): string {
@@ -36,5 +57,10 @@ export class AuthService {
 
   getDesignation(): string {
     return this.designation;
+  }
+
+  logout(): void {
+    sessionStorage.removeItem(TOKEN_KEY);
+    window.location.href = '/logout';
   }
 }

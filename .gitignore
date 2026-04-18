@@ -41,11 +41,11 @@ CS Additional Reference/18 Apr-implementation-gaps.md
 CS Additional Reference/method-by-method-patch-guide.md
 .env
 
-# Angular
-laps/laps-frontend/node_modules/
-laps/laps-frontend/dist/
-
 # AI agent local config (commands, hooks, prompts — developer-local, not shared)
 .claude/
 .codex/
 AGENTS.md
+
+# Angular
+laps/laps-frontend/node_modules/
+laps/laps-frontend/dist/

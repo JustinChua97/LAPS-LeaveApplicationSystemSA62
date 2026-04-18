@@ -14,9 +14,8 @@ import { EntitlementDto, LeaveDto } from '../../models/leave.model';
 export class DashboardComponent implements OnInit {
 
   private leaveService = inject(LeaveService);
-  private authService = inject(AuthService);
+  protected authService = inject(AuthService);
 
-  // Set by APP_INITIALIZER before this component runs
   fullName = this.authService.getFullName();
   designation = this.authService.getDesignation();
 
@@ -26,6 +25,7 @@ export class DashboardComponent implements OnInit {
   }
 
   logout(): void {
+    this.authService.clearToken();
     fetch('/logout', {
       method: 'POST',
       headers: { 'X-XSRF-TOKEN': this.csrfToken },
