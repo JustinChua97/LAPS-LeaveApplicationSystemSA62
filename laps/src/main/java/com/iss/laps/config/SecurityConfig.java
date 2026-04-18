@@ -132,16 +132,6 @@ public class SecurityConfig {
             )
             .exceptionHandling(ex -> ex
                 .accessDeniedPage("/access-denied")
-                .defaultAuthenticationEntryPointFor(
-                    (request, response, authException) -> {
-                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                        response.setContentType("application/json");
-                        response.getWriter().write(
-                            "{\"error\":\"Unauthorized\",\"message\":\"Authentication failed\"}"
-                        );
-                    },
-                    new AntPathRequestMatcher("/api/**")
-                )
             );
 
         return http.build();
