@@ -178,7 +178,7 @@ public class EmployeeService {
             case ANNUAL:
                 return employee.getDesignation().getAnnualLeaveEntitlement();
             case MEDICAL:
-                return 60;
+                return 14;
             case HOSPITALISATION:
                 return 46;
             case COMPENSATION:

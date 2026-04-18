@@ -38,6 +38,13 @@ public class AdminService {
         if (leaveType.getId() != null) {
             LeaveType existing = findLeaveTypeById(leaveType.getId());
             leaveType.setDefaultType(existing.getDefaultType());
+            // Default leave types can change active/half-day policy, but not max days.
+            if (existing.getDefaultType() != null) {
+                boolean policyChanged = leaveType.getMaxDaysPerYear() != existing.getMaxDaysPerYear();
+                if (policyChanged) {
+                    throw new LeaveApplicationException("Cannot modify the maximum number of days for a default leave type. Please approach the system administrator.");
+                }
+            }
         }
         return leaveTypeRepo.save(leaveType);
     }

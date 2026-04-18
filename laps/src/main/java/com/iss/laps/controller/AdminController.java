@@ -203,10 +203,16 @@ public class AdminController {
                                    @ModelAttribute("leaveType") LeaveType leaveType,
                                    RedirectAttributes redirectAttrs) {
         leaveType.setId(id);
-        adminService.saveLeaveType(leaveType);
-        redirectAttrs.addFlashAttribute("success", "Leave type updated.");
+        try {
+            adminService.saveLeaveType(leaveType);
+            redirectAttrs.addFlashAttribute("success", "Leave type updated.");
+        } catch (LeaveApplicationException e) {
+            redirectAttrs.addFlashAttribute("error", e.getMessage());
+        }
         return "redirect:/admin/leave-types";
     }
+
+
 
     @PostMapping("/leave-types/{id}/delete")
     public String deleteLeaveType(@PathVariable Long id, RedirectAttributes redirectAttrs) {

@@ -145,7 +145,13 @@ VALUES
     ('Compensation',
      'Compensation leave earned from overtime work. Every 4 hours of overtime = 0.5 day compensation leave.',
      108, TRUE, TRUE, 'COMPENSATION')
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (name) DO UPDATE;
+SET
+    description = EXCLUDED.description,
+    max_days_per_year = EXCLUDED.max_days_per_year,
+    half_day_allowed = EXCLUDED.half_day_allowed,
+    active = EXCLUDED.active,
+    default_type = EXCLUDED.default_type;
 
 -- Compensation leave is capped at a maximum of 108 days.
 -- Employees can only work up to 12 hours a day, or 4 overtime hours a day.

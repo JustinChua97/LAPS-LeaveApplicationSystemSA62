@@ -11,7 +11,13 @@ VALUES
     ('Medical', 'Medical leave - certificate required for more than 2 consecutive days', 14, false, true, 'MEDICAL'),
     ('Hospitalisation', 'Hospitalisation leave - issued by the hospital. Maximum 46 days per year.', 46, false, true, 'HOSPITALISATION'),
     ('Compensation', 'Compensation leave earned from overtime work (4 hrs = 0.5 day)', 108, true, true, 'COMPENSATION')
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (name) DO UPDATE
+SET
+    description = EXCLUDED.description,
+    max_days_per_year = EXCLUDED.max_days_per_year,
+    half_day_allowed = EXCLUDED.half_day_allowed,
+    active = EXCLUDED.active,
+    default_type = EXCLUDED.default_type;
 
 -- Compensation leave is capped at a maximum of 108 days.
 -- Employees can only work up to 12 hours a day, or 4 overtime hours a day.
