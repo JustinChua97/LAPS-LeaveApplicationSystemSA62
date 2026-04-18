@@ -1,0 +1,7 @@
+.badge-applied   { background-color: #6c757d; color: white; }
+.badge-updated   { background-color: #0dcaf0; color: black; }
+.badge-approved  { background-color: #198754; color: white; }
+.badge-rejected  { background-color: #dc3545; color: white; }
+.badge-cancelled { background-color: #fd7e14; color: white; }
+.badge-deleted   { background-color: #343a40; color: white; }
+.badge-archived  { background-color: #adb5bd; color: black; }

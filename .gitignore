@@ -28,6 +28,11 @@ target/
 
 # Local developer overrides — never commit credentials
 application-local.properties
+.env
+
+# Angular
+laps/laps-frontend/node_modules/
+laps/laps-frontend/dist/
 
 # AI agent local config (commands, hooks, prompts — developer-local, not shared)
 .claude/

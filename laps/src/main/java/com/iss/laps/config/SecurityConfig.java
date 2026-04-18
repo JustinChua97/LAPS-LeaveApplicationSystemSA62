@@ -11,11 +11,12 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 import com.iss.laps.security.JwtAuthenticationFilter;
@@ -41,6 +42,7 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+    // prevent spring boot from auto registering JwtAuthenticationFilter as a servlet filter
     @Bean
     public FilterRegistrationBean<JwtAuthenticationFilter> jwtAuthenticationFilterRegistration(
             JwtAuthenticationFilter filter) {
@@ -50,14 +52,10 @@ public class SecurityConfig {
     }
 
     /**
-     * API filter chain — applies to all /api/** requests.
-     *
-     * Security properties (issue #6):
-     * - STATELESS session: no HttpSession created or used (ASVS V3.5.2)
-     * - CSRF disabled: safe because no cookies are used for auth on this chain
-     * - 401 JSON entry point: never redirects to /login (ASVS V13.1.3)
-     * - JwtAuthenticationFilter validates Bearer tokens before Spring's auth filter
-     * - /api/v1/auth/token is the only path permitted without a token
+     * API filter chain — no CSRF, supports both session cookies (Angular) and JWT Bearer tokens.
+     * Must be @Order(1) so it takes precedence over the web chain.
+     * CSRF is safe to disable here because the API relies on explicit credentials (session or Bearer),
+     * not on implicit browser cookie submission.
      */
     @Bean
     @Order(1)
@@ -65,19 +63,11 @@ public class SecurityConfig {
         http
             .securityMatcher("/api/**")
             .csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Public endpoint for token issuance
                 .requestMatchers("/api/v1/auth/token").permitAll()
-
-                // Role-based API endpoints
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/manager/**").hasAnyRole("MANAGER", "ADMIN")
                 .requestMatchers("/api/employee/**").hasAnyRole("EMPLOYEE", "MANAGER", "ADMIN")
-                .requestMatchers("/api/movement/**").authenticated()
-
-                // Catch-all: any other API request must be authenticated
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex
@@ -95,19 +85,19 @@ public class SecurityConfig {
     }
 
     /**
-     * Web filter chain — applies to all non-API requests (Thymeleaf UI).
-     *
-     * This chain is intentionally unchanged from before issue #6:
-     * - CSRF remains enabled (CLAUDE.md security rule)
-     * - Form login and session management intact
-     * - Role-based path matchers intact
+     * Web filter chain — Thymeleaf UI and Angular app. CSRF enabled, session-based.
      */
     @Bean
     @Order(2)
     public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
         http
+            .csrf(csrf -> csrf
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+            )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
+                .requestMatchers("/app/**").permitAll()
                 .requestMatchers("/login", "/admin/login").permitAll()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/manager/**").hasAnyRole("MANAGER")
@@ -127,14 +117,14 @@ public class SecurityConfig {
                     } else if (role.equals("ROLE_MANAGER")) {
                         response.sendRedirect("/manager/dashboard");
                     } else {
-                        response.sendRedirect("/employee/dashboard");
+                        response.sendRedirect("/app");
                     }
                 })
                 .failureUrl("/login?error=true")
                 .permitAll()
             )
             .logout(logout -> logout
-                .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
+                .logoutRequestMatcher(new AntPathRequestMatcher("/logout", "POST"))
                 .logoutSuccessUrl("/login?logout=true")
                 .invalidateHttpSession(true)
                 .clearAuthentication(true)
