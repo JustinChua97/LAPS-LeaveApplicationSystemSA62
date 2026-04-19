@@ -1,6 +1,7 @@
 package com.iss.laps.config;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -49,7 +50,8 @@ public class DataInitializer implements ApplicationRunner {
     @Transactional
     public void run(ApplicationArguments args) {
         if (employeeRepository.existsByUsername("admin")) {
-            log.info("DataInitializer: seed data already present, skipping.");
+            log.info("DataInitializer: seed data already present, backfilling missing entitlements...");
+            backfillMissingEntitlements();
             return;
         }
 
@@ -176,6 +178,44 @@ public class DataInitializer implements ApplicationRunner {
                         ent.setUsedDays(ent.getUsedDays() + la.getDuration());
                         entitlementRepository.save(ent);
                     });
+        }
+    }
+
+    private void backfillMissingEntitlements() {
+        int year = LocalDate.now().getYear();
+        List<LeaveType> activeTypes = leaveTypeRepository.findByActive(true);
+        employeeRepository.findAll().forEach(emp -> {
+            if (emp.getRole() == Role.ROLE_ADMIN || emp.getDesignation() == null) return;
+            for (LeaveType lt : activeTypes) {
+                Optional<LeaveEntitlement> existing =
+                        entitlementRepository.findByEmployeeAndLeaveTypeAndYear(emp, lt, year);
+                double correct = defaultDaysFor(emp, lt);
+                if (existing.isEmpty()) {
+                    entitlementRepository.save(new LeaveEntitlement(emp, lt, year, correct));
+                    log.info("DataInitializer: backfilled {} ({} days) for {}", lt.getName(), correct, emp.getUsername());
+                } else {
+                    LeaveEntitlement ent = existing.get();
+                    // Clamp: never reduce below what the employee has already used
+                    double adjusted = Math.max(correct, ent.getUsedDays());
+                    if (Double.compare(ent.getTotalDays(), adjusted) != 0) {
+                        log.info("DataInitializer: correcting {} for {} from {} -> {}",
+                                lt.getName(), emp.getUsername(), ent.getTotalDays(), adjusted);
+                        ent.setTotalDays(adjusted);
+                        entitlementRepository.save(ent);
+                    }
+                }
+            }
+        });
+    }
+
+    private double defaultDaysFor(Employee emp, LeaveType lt) {
+        if (lt.getDefaultType() == null) return lt.getMaxDaysPerYear();
+        switch (lt.getDefaultType()) {
+            case ANNUAL: return emp.getDesignation().getAnnualLeaveEntitlement();
+            case MEDICAL: return 14;
+            case HOSPITALISATION: return 46;
+            case COMPENSATION: return 0;
+            default: return lt.getMaxDaysPerYear();
         }
     }
 
