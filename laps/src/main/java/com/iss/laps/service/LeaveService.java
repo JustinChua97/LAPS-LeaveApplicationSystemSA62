@@ -364,7 +364,6 @@ public class LeaveService {
 
         double usedDays = leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(
             employee, leaveType.getId(), start.getYear(), excludeId);
-
         if (usedDays + duration > leaveType.getMaxDaysPerYear()) {
             throw new LeaveApplicationException(
                 "Insufficient leave balance. Remaining: " + (leaveType.getMaxDaysPerYear() - usedDays) + " days");
@@ -380,9 +379,22 @@ public class LeaveService {
                         throw new LeaveApplicationException("Leave duration exceeds the maximum limit of 14 consecutive calendar days. Please seek Department Head approval for extended absence.");
                     }
 
-                    //Confirm that the start and end dates of the application is on a working day
-                    if (!leaveCalculator.areWorkingDays(start, end, holidays)) {
-                        throw new LeaveApplicationException("Start and end dates must be working days for annual leave");
+                    if (!leaveCalculator.isWorkingDay(start, holidays)) {
+                        throw new LeaveApplicationException("Start date must be a working day for annual leave");
+                    }
+
+                    switch (end.getDayOfWeek()) {
+                        case SATURDAY, SUNDAY:
+                            if (calendarDays != 14) {
+                                throw new LeaveApplicationException(
+                                        "End date can be a weekend only when annual leave spans exactly 14 calendar days");
+                            }
+                            break;
+                        default:
+                            if (!leaveCalculator.isWorkingDay(end, holidays)) {
+                                throw new LeaveApplicationException("End date must be a working day for annual leave");
+                            }
+                            break;
                     }
     
                     //Confirm entitlement & if there is sufficient leave balance 

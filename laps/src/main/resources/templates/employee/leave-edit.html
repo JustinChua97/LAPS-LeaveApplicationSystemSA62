@@ -10,9 +10,7 @@
                         <h5 class="mb-0"><i class="bi bi-pencil-square"></i> Update Leave Application</h5>
                     </div>
                     <div class="card-body">
-                        <div th:if="${error}" class="alert alert-danger">
-                            <i class="bi bi-exclamation-triangle-fill"></i> <span th:text="${error}"></span>
-                        </div>
+
                         <form th:action="@{'/employee/leaves/' + ${leaveApplication.id} + '/edit'}"
                             th:object="${leaveApplication}" method="post">
                             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
