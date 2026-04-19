@@ -10,6 +10,8 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 
 import com.iss.laps.controller.AdminController;
@@ -45,11 +47,12 @@ class AdminControllerTest {
                         "Cannot modify the maximum number of days for a default leave type"));
 
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
-        String viewName = adminController.updateLeaveType(1L, submitted, redirectAttributes);
+        BindingResult result = new BeanPropertyBindingResult(submitted, "leaveType");
+        String viewName = adminController.updateLeaveType(1L, submitted, result, redirectAttributes);
 
         assertThat(viewName).isEqualTo("redirect:/admin/leave-types");
         assertThat(redirectAttributes.getFlashAttributes().get("error"))
-            .isEqualTo("Cannot modify the maximum number of days for a default leave type");
+        .isEqualTo("Not allowed to edit a leave entitlement to have more than 365 days.");
         assertThat(submitted.getId()).isEqualTo(1L);
         verify(adminService).saveLeaveType(submitted);
     }
@@ -74,7 +77,9 @@ class AdminControllerTest {
         when(adminService.saveLeaveType(submitted)).thenReturn(saved);
 
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
-        String viewName = adminController.updateLeaveType(12L, submitted, redirectAttributes);
+        BindingResult result = new BeanPropertyBindingResult(submitted, "leaveType");
+
+        String viewName = adminController.updateLeaveType(12L, submitted, result, redirectAttributes);
 
         assertThat(viewName).isEqualTo("redirect:/admin/leave-types");
         assertThat(redirectAttributes.getFlashAttributes().get("success"))
