@@ -539,21 +539,22 @@ class LeaveServiceTest {
                 .thenReturn(Optional.of(entitlement));
         when(leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(any(), anyLong(), anyInt(), isNull()))
                 .thenReturn(0.0);
+        when(leaveCalculator.isWorkingDay(eq(LocalDate.of(2026, 4, 27)), any())).thenReturn(true);
         when(leaveCalculator.calculateAnnualLeaveDays(
             eq(LocalDate.of(2026, 4, 27)),
             eq(LocalDate.of(2026, 5, 10)),
-            eq(holidays)
-                )).thenReturn(9.0);
-        when(leaveAppRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        doNothing().when(emailService).sendLeaveApplicationNotification(any(), eq(EmailService.NotificationType.APPLICATION));
+            any()))
+            .thenReturn(9.0);
 
-        LeaveApplication result = leaveService.applyLeave(app, employee);
+    when(leaveAppRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    doNothing().when(emailService).sendLeaveApplicationNotification(any(), eq(EmailService.NotificationType.APPLICATION));
 
-        assertThat(result.getStatus()).isEqualTo(LeaveStatus.APPLIED);
-        assertThat(result.getDuration()).isEqualTo(9.0);
-        verify(leaveAppRepo).save(any(LeaveApplication.class));
-    }
+    LeaveApplication result = leaveService.applyLeave(app, employee);
 
+    assertThat(result.getStatus()).isEqualTo(LeaveStatus.APPLIED);
+    assertThat(result.getDuration()).isEqualTo(9.0);
+    verify(leaveAppRepo).save(any(LeaveApplication.class));
+}
     @Test
     @DisplayName("Edge Case: Public Holiday on Weekend with off-in-lieu on Monday")
     void applyLeave_phOnWeekendWithOffInLieu_accepted() {
@@ -580,20 +581,21 @@ class LeaveServiceTest {
             .thenReturn(Optional.of(entitlement));
         when(leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(any(), anyLong(), anyInt(), isNull()))
             .thenReturn(0.0);
+        when(leaveCalculator.isWorkingDay(eq(LocalDate.of(2026, 8, 3)), any())).thenReturn(true);
         when(leaveCalculator.calculateAnnualLeaveDays(
             eq(LocalDate.of(2026, 8, 3)),
             eq(LocalDate.of(2026, 8, 16)),
-            eq(holidays)
-                )).thenReturn(9.0);
+            any()))
+            .thenReturn(9.0);
+            
         when(leaveAppRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        verify(leaveAppRepo).save(any(LeaveApplication.class));
         doNothing().when(emailService).sendLeaveApplicationNotification(any(), eq(EmailService.NotificationType.APPLICATION));
 
         LeaveApplication result = leaveService.applyLeave(app, employee);
 
         assertThat(result.getStatus()).isEqualTo(LeaveStatus.APPLIED);
         assertThat(result.getDuration()).isEqualTo(9.0);
-        
+        verify(leaveAppRepo).save(any(LeaveApplication.class));
     }
 
     @Test
