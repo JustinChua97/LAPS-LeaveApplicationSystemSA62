@@ -17,6 +17,12 @@
             <a th:href="@{/admin/holidays/new}" class="btn btn-primary btn-sm">
                 <i class="bi bi-plus-circle"></i> Add Holiday
             </a>
+            <form th:action="@{/admin/holidays/sync}" method="post" class="d-inline">
+            <input type="hidden" name="year" th:value="${year}" />
+            <button type="submit" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-repeat"></i> Sync from API
+            </button>
+        </form>
         </div>
     </div>
     <div class="card shadow-sm">
