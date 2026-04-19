@@ -33,6 +33,7 @@ import com.iss.laps.model.LeaveEntitlement;
 import com.iss.laps.model.LeaveStatus;
 import com.iss.laps.model.LeaveType;
 import com.iss.laps.model.LeaveTypeDefault;
+import com.iss.laps.model.PublicHoliday;
 import com.iss.laps.repository.CompensationClaimRepository;
 import com.iss.laps.repository.EmployeeRepository;
 import com.iss.laps.repository.LeaveApplicationRepository;
@@ -174,7 +175,7 @@ class LeaveServiceTest {
                 .thenReturn(Optional.of(entitlement));
         when(leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(any(), anyLong(), anyInt(), isNull()))
                 .thenReturn(0.0);
-        when(leaveCalculator.areWorkingDays(any(), any(), any())).thenReturn(true);
+        when(leaveCalculator.isWorkingDay(any(), any())).thenReturn(true);
         when(leaveCalculator.calculateAnnualLeaveDays(any(), any(), any())).thenReturn(3.0);
         when(leaveAppRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
         doNothing().when(emailService).sendLeaveApplicationNotification(any(), eq(EmailService.NotificationType.APPLICATION));
@@ -187,6 +188,23 @@ class LeaveServiceTest {
         verify(leaveAppRepo).save(any(LeaveApplication.class));
     }
 
+    @Test
+    @DisplayName("Apply annual leave does not allow weekend end date when start date is working day if the duration is less than 14 calendar days")
+    void applyLeave_annualWeekendEndDate_rejection() {
+        sampleApplication.setStartDate(LocalDate.of(2026, 4, 9)); // Thursday
+        sampleApplication.setEndDate(LocalDate.of(2026, 4, 12));  // Sunday
+
+        LeaveEntitlement entitlement = new LeaveEntitlement(employee, annualLeaveType, 2026, 14);
+        when(leaveTypeRepo.findById(1L)).thenReturn(Optional.of(annualLeaveType));
+        when(publicHolidayRepo.findByYear(anyInt())).thenReturn(List.of());
+        when(leaveCalculator.isWorkingDay(eq(LocalDate.of(2026, 4, 9)), any())).thenReturn(true);
+        when(leaveCalculator.calculateAnnualLeaveDays(any(), any(), any())).thenReturn(2.0);
+        
+        assertThatThrownBy(() -> leaveService.applyLeave(sampleApplication, employee))
+        .isInstanceOf(LeaveApplicationException.class)
+        .hasMessageContaining("End date can be a weekend only when annual leave spans exactly 14 calendar days");
+    }
+    
     @Test
     @DisplayName("Apply leave fails when end date is before start date")
     void applyLeave_endBeforeStart_throwsException() {
@@ -477,6 +495,107 @@ class LeaveServiceTest {
         assertThatThrownBy(() -> leaveService.applyLeave(app, employee))
                 .isInstanceOf(LeaveApplicationException.class)
                 .hasMessageContaining("Leave duration exceeds the maximum limit of 14 consecutive calendar days");
+    }
+
+    @Test
+    @DisplayName("Maximum Limit Case: 18 calendar days rejected")
+    void applyLeave_maxLimitExceeded_rejected() {
+        // Staff tries to apply for long year-end break
+        // Start: Friday, 18 Dec 2026, End: Monday, 4 Jan 2027 = 18 calendar days
+        LeaveApplication app = new LeaveApplication();
+        app.setLeaveType(annualLeaveType);
+        app.setStartDate(LocalDate.of(2026, 12, 18));
+        app.setEndDate(LocalDate.of(2027, 1, 4));
+        app.setReason("Year-end break");
+
+        when(leaveTypeRepo.findById(1L)).thenReturn(Optional.of(annualLeaveType));
+
+        assertThatThrownBy(() -> leaveService.applyLeave(app, employee))
+                .isInstanceOf(LeaveApplicationException.class)
+                .hasMessageContaining("Leave duration exceeds the maximum limit of 14 consecutive calendar days");
+    }
+
+    @Test
+    @DisplayName("Compliant Long Break: 14 days with weekend end date (Labour Day PH)")
+    void applyLeave_14daysWithWeekendEnd_accepted() {
+        // Staff applies for maximum allowed duration during period with Public Holiday
+        // Start: Monday, 27 Apr 2026, End: Sunday, 10 May 2026 = 14 calendar days
+        // Labour Day (1 May), Weekends: May 2,3,9,10
+        // Expected deduction: 14 - 1 (PH) - 4 (weekends) = 9 days
+        LeaveApplication app = new LeaveApplication();
+        app.setLeaveType(annualLeaveType);
+        app.setStartDate(LocalDate.of(2026, 4, 27));
+        app.setEndDate(LocalDate.of(2026, 5, 10));
+        app.setReason("Long break with public holiday");
+
+        LeaveEntitlement entitlement = new LeaveEntitlement(employee, annualLeaveType, 2026, 21);
+        List<PublicHoliday> holidays = List.of(
+            new PublicHoliday(LocalDate.of(2026, 5, 1), "Labour Day")
+        );
+
+        when(leaveTypeRepo.findById(1L)).thenReturn(Optional.of(annualLeaveType));
+        when(publicHolidayRepo.findByYear(2026)).thenReturn(holidays);
+        when(leaveEntitlementRepo.findByEmployeeAndLeaveTypeAndYear(any(), any(), anyInt()))
+                .thenReturn(Optional.of(entitlement));
+        when(leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(any(), anyLong(), anyInt(), isNull()))
+                .thenReturn(0.0);
+        when(leaveCalculator.isWorkingDay(eq(LocalDate.of(2026, 4, 27)), any())).thenReturn(true);
+        when(leaveCalculator.calculateAnnualLeaveDays(
+            eq(LocalDate.of(2026, 4, 27)),
+            eq(LocalDate.of(2026, 5, 10)),
+            any()))
+            .thenReturn(9.0);
+
+    when(leaveAppRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    doNothing().when(emailService).sendLeaveApplicationNotification(any(), eq(EmailService.NotificationType.APPLICATION));
+
+    LeaveApplication result = leaveService.applyLeave(app, employee);
+
+    assertThat(result.getStatus()).isEqualTo(LeaveStatus.APPLIED);
+    assertThat(result.getDuration()).isEqualTo(9.0);
+    verify(leaveAppRepo).save(any(LeaveApplication.class));
+}
+    @Test
+    @DisplayName("Edge Case: Public Holiday on Weekend with off-in-lieu on Monday")
+    void applyLeave_phOnWeekendWithOffInLieu_accepted() {
+        // Staff applies leave when National Day (Aug 9) is Sunday and Monday (Aug 10) is off-in-lieu
+        // Start: Monday, 3 Aug 2026, End: Sunday, 16 Aug 2026 = 14 calendar days
+        // Public Holiday (Aug 10 - off-in-lieu), Weekends: Aug 8,9,15,16
+        // Expected deduction: 14 - 1 (PH) - 4 (weekends) = 9 days
+        LeaveApplication app = new LeaveApplication();
+        app.setLeaveType(annualLeaveType);
+        app.setStartDate(LocalDate.of(2026, 8, 3));
+        app.setEndDate(LocalDate.of(2026, 8, 16));
+        app.setReason("Leave during National Day break");
+
+        LeaveEntitlement entitlement = new LeaveEntitlement(employee, annualLeaveType, 2026, 21);
+        // National Day 2026 is on Sunday Aug 9; Monday Aug 10 is off-in-lieu
+        List<PublicHoliday> holidays = List.of(
+            new PublicHoliday(LocalDate.of(2026, 8, 9), "National Day (Sunday)"),
+            new PublicHoliday(LocalDate.of(2026, 8, 10), "National Day off-in-lieu (Monday)")
+        );
+
+        when(leaveTypeRepo.findById(1L)).thenReturn(Optional.of(annualLeaveType));
+        when(publicHolidayRepo.findByYear(2026)).thenReturn(holidays);
+        when(leaveEntitlementRepo.findByEmployeeAndLeaveTypeAndYear(any(), any(), anyInt()))
+            .thenReturn(Optional.of(entitlement));
+        when(leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(any(), anyLong(), anyInt(), isNull()))
+            .thenReturn(0.0);
+        when(leaveCalculator.isWorkingDay(eq(LocalDate.of(2026, 8, 3)), any())).thenReturn(true);
+        when(leaveCalculator.calculateAnnualLeaveDays(
+            eq(LocalDate.of(2026, 8, 3)),
+            eq(LocalDate.of(2026, 8, 16)),
+            any()))
+            .thenReturn(9.0);
+            
+        when(leaveAppRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        doNothing().when(emailService).sendLeaveApplicationNotification(any(), eq(EmailService.NotificationType.APPLICATION));
+
+        LeaveApplication result = leaveService.applyLeave(app, employee);
+
+        assertThat(result.getStatus()).isEqualTo(LeaveStatus.APPLIED);
+        assertThat(result.getDuration()).isEqualTo(9.0);
+        verify(leaveAppRepo).save(any(LeaveApplication.class));
     }
 
     @Test
