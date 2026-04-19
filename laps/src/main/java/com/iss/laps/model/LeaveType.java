@@ -1,15 +1,28 @@
 package com.iss.laps.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 
 @Entity
 @Table(name = "leave_types")
 @Getter @Setter @NoArgsConstructor
 public class LeaveType {
+
+    @Enumerated(EnumType.STRING) 
+    @Column(name = "default_type", unique = true, updatable = false, nullable = true)
+    private LeaveTypeDefault defaultType;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -22,6 +35,7 @@ public class LeaveType {
     @Column
     private String description;
 
+    @Max(365)
     @Column(nullable = false)
     private int maxDaysPerYear;
 
@@ -31,10 +45,15 @@ public class LeaveType {
     @Column(nullable = false)
     private boolean active = true;
 
-    public LeaveType(String name, String description, int maxDaysPerYear, boolean halfDayAllowed) {
+        public void defaultLeaveType(String name, String description, int maxDaysPerYear, boolean halfDayAllowed, LeaveTypeDefault defaultType) {
         this.name = name;
         this.description = description;
         this.maxDaysPerYear = maxDaysPerYear;
         this.halfDayAllowed = halfDayAllowed;
+        this.defaultType = defaultType;
+    }
+
+    public boolean isDefault() {
+    return this.defaultType != null;
     }
 }

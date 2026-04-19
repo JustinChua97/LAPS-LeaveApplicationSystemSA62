@@ -29,10 +29,10 @@
                         <td>
                             <a th:href="@{'/admin/leave-types/' + ${leaveType.id} + '/edit'}"
                                class="btn btn-outline-warning btn-sm">Edit</a>
-                            <button type="button" class="btn btn-outline-danger btn-sm"
-                                    th:data-url="@{'/admin/leave-types/' + ${leaveType.id} + '/delete'}"
-                                    data-confirm="Delete this leave type?"
-                                    onclick="confirmPost(this)">Delete</button>
+                            <form method="POST" th:action="@{'/admin/leave-types/' + ${leaveType.id} + '/delete'}" style="display: inline;">
+                                <button type="submit" class="btn btn-outline-danger btn-sm"
+                                        onclick="return confirm('Delete this leave type?');">Delete</button>
+                            </form>
                         </td>
                     </tr>
                 </tbody>

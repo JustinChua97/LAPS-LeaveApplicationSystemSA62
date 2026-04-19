@@ -75,10 +75,11 @@ function csrfPost(url, redirectPath) {
  */
 function confirmPost(btn) {
     const url = btn.getAttribute('data-url');
+    const redirect = btn.getAttribute('data-redirect') || '/';  // Default to home if not specified
     const msg = btn.getAttribute('data-confirm') || 'Are you sure?';
     if (!url) return;
     if (!window.confirm(msg)) return;
-    csrfPost(url, null);  // null → reload current page inside csrfPost
+    csrfPost(url, redirect);  // Use the redirect from the button
 }
 
 /**

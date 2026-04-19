@@ -1,0 +1,89 @@
+Welcome to the team! I'm thrilled to have you onboard. As you dive into the LAPS (Leave Application Processing System) codebase, it's crucial to understand how our architecture is structured, how the layers interact, and how data flows through the application.
+
+Below is an onboarding guide I've put together. It maps out our core business logic, outlines the strict layer responsibilities we enforce, and details the sequences for our most critical use cases.
+
+LAPS Codebase Onboarding Guide
+1. Architectural Layers & Responsibilities
+Our application strictly adheres to an N-Tier Spring Boot architecture. Here is where code belongs:
+
+Security / Filter Layer: Managed by Spring Security. We have two parallel filter chains:
+apiFilterChain: Stateless JWT authentication for /api/** endpoints.
+webFilterChain: Stateful Form-login (session + cookie) for the Thymeleaf web UI.
+Controller Layer (e.g., EmployeeController, JwtAuthController):
+Responsibility: HTTP boundary. It maps routes, handles CSRF tokens, extracts session data/JWTs, and enforces the first line of defense using Bean Validation (@Valid on DTOs/ModelAttributes).
+Rule: No business logic lives here. Controllers simply validate the shape of the input and delegate to the Service layer.
+Service Layer (e.g., LeaveService, JwtService):
+Responsibility: The core of the application. All business rules, transaction boundaries (@Transactional), and secondary validations (e.g., "does this leave overlap with another?") live here.
+Repository Layer (e.g., LeaveRepository):
+Responsibility: Database interactions using Spring Data JPA. We exclusively use parameterized queries to prevent SQL injection.
+Async / Infrastructure Layer (e.g., EmailService):
+Responsibility: Fire-and-forget background tasks via @Async. Failures here (like an SMTP timeout) must never abort the main Service layer transactions.
+2. Core Business Flows & Method Sequences
+Flow A: Stateless API Authentication (JWT Login)
+When a mobile app or script needs to authenticate against our REST API, it uses this sequence:
+
+Client: Sends POST /api/v1/auth/token with {"username": "...", "password": "..."}.
+Filter Layer (JwtAuthenticationFilter): Detects this is the token endpoint and passes the request through without demanding a token.
+Controller Layer (JwtAuthController.issueToken):
+Validates the AuthRequest shape (@Valid).
+Invokes Spring's AuthenticationManager.authenticate().
+Security Layer (CustomUserDetailsService):
+Loads the user from the DB.
+BCryptPasswordEncoder verifies the password.
+Service Layer (JwtService.generateToken):
+If credentials are valid, generates an HS256 signed JWT containing the username (sub claim) and DB-loaded roles.
+Controller Layer: Returns the token (and expiry) to the client.
+Flow B: Requesting Protected Data (e.g., Get My Leaves)
+When an authenticated API client requests data:
+
+Client: Sends GET /api/v1/leaves/my with header Authorization: Bearer <token>.
+Filter Layer (JwtAuthenticationFilter.doFilterInternal):
+Extracts the token.
+JwtService.validateToken(): Validates the cryptographic signature and exp (expiry) claim.
+JwtService.extractUsername(): Pulls the username from the token.
+CustomUserDetailsService.loadUserByUsername(): Crucial security rule — we re-load the user's roles from the Database rather than trusting the token's role claims (ASVS V4.1.1).
+Sets UsernamePasswordAuthenticationToken in the SecurityContext.
+Controller Layer (LeaveRestController.getMyLeaves):
+Retrieves the current user via SecurityUtils.getCurrentEmployee().
+Fetches and returns the scoped list of leaves.
+Flow C: Leave Application Submission (Web UI)
+This is our primary transactional flow for employees requesting time off:
+
+Client (Browser): Submits POST /employee/leaves/apply alongside a valid CSRF token and Session cookie.
+Controller Layer (EmployeeController.applyLeave):
+Validates the incoming form (@Valid @ModelAttribute LeaveApplication).
+If there are binding errors, immediately redirects back to the form.
+Service Layer (LeaveService.applyLeave): (Starts @Transactional DB session)
+validateLeaveApplication(): Enforces business rules (e.g., start date is not in the past, end date >= start date, leave balance >= duration, no overlapping approved leaves).
+Repository Layer (LeaveAppRepo.save):
+Saves the pending application to the database.
+Service Layer (LeaveService.initEmailAssociations):
+Hibernate Quirk Handling: Force-loads lazy JPA relations (like Employee.manager) while the database transaction is still open.
+Async Layer (EmailService.sendLeaveApplicationNotification):
+Receives the fully-loaded entity and queues an async task to send an email to the employee's manager via Mailtrap.
+Controller Layer: Commits transaction and returns a 302 Redirect to /employee/leaves with a success flash message.
+Flow D: Leave Approval / Rejection
+When a manager actions a leave request:
+
+Controller Layer: Receives the POST request with the leave ID.
+Service Layer (LeaveService.approveLeave or rejectLeave):
+Verifies that the current logged-in user (ROLE_MANAGER) is actually the assigned manager for the employee who submitted the request.
+Updates the leave status (APPROVED or REJECTED).
+Calls initEmailAssociations(application).
+Delegates to EmailService.sendLeaveApprovalNotification() or sendLeaveRejectionNotification().
+
+3. Assumptions Made
+In reviewing the architectural documentation and PR explainers to build this guide, I operated under a few assumptions:
+
+Database Mapping: I am assuming the database is strictly mapped via Spring Data JPA Entities (Employee, LeaveApplication, LeaveType, etc.) using a PostgreSQL dialect in production and H2 in memory for the test profile.
+Web Framework: I assume the server-rendered UI is built exclusively using Thymeleaf, leveraging th:text for XSS prevention.
+Access Control: I assume method-level security (@PreAuthorize) and/or SecurityConfig matchers enforce the ROLE_ADMIN > ROLE_MANAGER > ROLE_EMPLOYEE hierarchy globally.
+Deployment Environment: I assume standard AWS Academy EC2 deployments sit behind an Nginx reverse proxy handling TLS termination, meaning the Spring Boot Tomcat container operates purely on plain HTTP over the local loopback interface.
+4. Lacking Parts / Areas for Further Review
+While the architectural explainers are excellent, there are a few areas you'll need to explore directly in the source code as they aren't fully covered in the high-level docs:
+
+Full Entity Relationship Diagram (ERD): You will need to inspect the @Entity classes directly to understand the full domain model (e.g., how Entitlement maps to Employee and LeaveType, and the exact cardinality of these relationships).
+Thymeleaf View Templates: The documentation details the REST API validation and error handling (generic 401s, no stack traces), but you'll need to review the src/main/resources/templates/ folder to ensure the GlobalExceptionHandler and controllers are correctly surfacing validation errors (BindingResult) to the end-users without echoing raw, unescaped user input.
+Specific Leave Calculation Logic: The exact algorithm for calculating consumed leave days (e.g., excluding weekends and public holidays) resides inside LeaveService. You'll need to read that specific implementation.
+Form Login configuration: While the stateless JWT chain is heavily documented, the specific configurations for the stateful webFilterChain (e.g., custom login page routing, session timeout limits, concurrent session control) will require reviewing SecurityConfig.java.
+Welcome again to the team! Take your time reading through the code matching these flows, and don't hesitate to reach out if you have questions about where a specific piece of logic belongs.

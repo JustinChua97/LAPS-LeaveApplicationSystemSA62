@@ -69,10 +69,12 @@ public interface LeaveApplicationRepository extends JpaRepository<LeaveApplicati
     // Count used leave days for entitlement check
     @Query("SELECT COALESCE(SUM(la.duration), 0) FROM LeaveApplication la " +
            "WHERE la.employee = :employee AND la.leaveType.id = :leaveTypeId " +
-           "AND YEAR(la.startDate) = :year AND la.status IN ('APPLIED', 'UPDATED', 'APPROVED')")
+           "AND YEAR(la.startDate) = :year AND la.status IN ('APPLIED', 'UPDATED', 'APPROVED') " +
+           "AND (:excludeId IS NULL OR la.id != :excludeId)")
     double sumUsedDaysByEmployeeAndLeaveTypeAndYear(@Param("employee") Employee employee,
                                                     @Param("leaveTypeId") Long leaveTypeId,
-                                                    @Param("year") int year);
+                                                    @Param("year") int year,
+                                                    @Param("excludeId") Long excludeId);
 
     // Reporting: all approved leave in a date range
     @Query("SELECT la FROM LeaveApplication la WHERE la.status = 'APPROVED' " +

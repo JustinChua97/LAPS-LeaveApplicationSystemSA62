@@ -1,20 +1,26 @@
 package com.iss.laps.controller.rest;
 
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.iss.laps.dto.EntitlementDto;
 import com.iss.laps.dto.LeaveDto;
 import com.iss.laps.model.LeaveApplication;
 import com.iss.laps.service.EmployeeService;
 import com.iss.laps.service.LeaveService;
 import com.iss.laps.util.SecurityUtils;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -117,7 +123,8 @@ public class LeaveRestController {
      * GET /api/v1/leave-types - Get all active leave types
      */
     @GetMapping("/leave-types")
-    public ResponseEntity<List<?>> getLeaveTypes() {
+    
+    public ResponseEntity<List<?>> getLeaveTypes() {    
         return ResponseEntity.ok(leaveService.getActiveLeaveTypes().stream().map(lt -> {
             Map<String, Object> map = new HashMap<>();
             map.put("id", lt.getId());
@@ -125,6 +132,7 @@ public class LeaveRestController {
             map.put("description", lt.getDescription());
             map.put("maxDaysPerYear", lt.getMaxDaysPerYear());
             map.put("halfDayAllowed", lt.isHalfDayAllowed());
+            map.put("defaultType", lt.getDefaultType());
             return map;
         }).toList());
     }

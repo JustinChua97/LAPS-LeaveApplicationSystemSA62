@@ -26,7 +26,7 @@
                                         id="leaveTypeSelect">
                                         <option value="">-- Select Leave Type --</option>
                                         <option th:each="leaveType : ${leaveTypes}" th:value="${leaveType.id}"
-                                            th:text="${leaveType.name}"></option>
+                                            th:text="${leaveType.name}" th:data-code="${leaveType.defaultType}"></option>
                                     </select>
                                     <div class="invalid-feedback" th:if="${#fields.hasErrors('leaveType')}">
                                         <span th:errors="*{leaveType}"></span>
@@ -119,8 +119,8 @@
             const halfDayTypeDiv = document.getElementById('halfDayTypeDiv');
 
             leaveTypeSelect.addEventListener('change', function () {
-                const selected = this.options[this.selectedIndex]?.text || '';
-                halfDayRow.style.display = selected === 'Compensation' ? '' : 'none';
+                const code = this.options[this.selectedIndex]?.dataset.code || '';
+                halfDayRow.style.display = code === 'COMPENSATION' ? '' : 'none';
             });
             halfDayCheck.addEventListener('change', function () {
                 halfDayTypeDiv.style.display = this.checked ? '' : 'none';

@@ -52,7 +52,8 @@ CREATE TABLE leave_types (
     description        TEXT,
     max_days_per_year  INTEGER      NOT NULL,
     half_day_allowed   BOOLEAN      NOT NULL DEFAULT FALSE,
-    active             BOOLEAN      NOT NULL DEFAULT TRUE
+    active             BOOLEAN      NOT NULL DEFAULT TRUE,
+    default_type       VARCHAR(40)  UNIQUE
 );
 
 -- ============================================================
@@ -130,18 +131,33 @@ CREATE INDEX idx_ph_year              ON public_holidays(year);
 -- ============================================================
 -- SEED DATA – Leave Types
 -- ============================================================
-INSERT INTO leave_types (name, description, max_days_per_year, half_day_allowed, active)
+INSERT INTO leave_types (name, description, max_days_per_year, half_day_allowed, active, default_type)
 VALUES
     ('Annual',
      'Annual leave entitlement based on designation. For durations ≤14 days, weekends and public holidays are excluded. For durations >14 days, all calendar days are counted.',
-     21, FALSE, TRUE),
+     21, TRUE, TRUE, 'ANNUAL'),
     ('Medical',
-     'Medical leave — a medical certificate is required for more than 2 consecutive days. Maximum 60 days per year.',
-     60, FALSE, TRUE),
+     'Medical leave — a medical certificate is required for more than 2 consecutive days. Maximum 14 days per year.',
+     14, FALSE, TRUE, 'MEDICAL'),
+    ('Hospitalisation',
+     'Hospitalisation leave - issued by the hospital. Maximum is 46 days a year.',
+     46, FALSE, TRUE, 'HOSPITALISATION'),
     ('Compensation',
      'Compensation leave earned from overtime work. Every 4 hours of overtime = 0.5 day compensation leave.',
-     999, TRUE, TRUE)
-ON CONFLICT (name) DO NOTHING;
+     108, TRUE, TRUE, 'COMPENSATION')
+ON CONFLICT (name) DO UPDATE;
+SET
+    description = EXCLUDED.description,
+    max_days_per_year = EXCLUDED.max_days_per_year,
+    half_day_allowed = EXCLUDED.half_day_allowed,
+    active = EXCLUDED.active,
+    default_type = EXCLUDED.default_type;
+
+-- Compensation leave is capped at a maximum of 108 days.
+-- Employees can only work up to 12 hours a day, or 4 overtime hours a day.
+-- There is a cap of 72 overtime hours a month. That means they can clock up to 9 days compensation leave.
+-- (4 hours overtime = 0.5 days compensation leave, 72 hours overtime = 9 days)
+-- This works out to 9 * 12 = 108 days in a year that they can claim back compensation leave.
 
 -- ============================================================
 -- SEED DATA – Singapore Public Holidays 2025

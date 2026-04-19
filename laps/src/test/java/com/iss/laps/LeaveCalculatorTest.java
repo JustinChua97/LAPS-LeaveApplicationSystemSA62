@@ -1,15 +1,17 @@
 package com.iss.laps;
 
-import com.iss.laps.model.PublicHoliday;
-import com.iss.laps.util.LeaveCalculator;
+import java.time.LocalDate;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDate;
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
+import com.iss.laps.model.PublicHoliday;
+import com.iss.laps.util.LeaveCalculator;
 
 @DisplayName("LeaveCalculator Unit Tests")
 class LeaveCalculatorTest {
@@ -61,6 +63,23 @@ class LeaveCalculatorTest {
         double days = calculator.calculateAnnualLeaveDays(start, end, holidays2026);
         // Weekends: 10-11, 17-18 = 4 days off → 10 working days
         assertEquals(10.0, days, "14-day period should exclude weekends");
+    }
+
+    @Test
+    @DisplayName("Cross-year annual leave uses both years' holidays")
+    void annualLeave_crossYear_usesHolidaysFromBothYears() {
+        List<PublicHoliday> holidays = List.of(
+            new PublicHoliday(LocalDate.of(2026, 12, 25), "Christmas Day"),
+            new PublicHoliday(LocalDate.of(2027, 1, 1), "New Year's Day")
+        );
+        // 11 calendar days (<=14): 2026-12-24 to 2027-01-03
+        LocalDate start = LocalDate.of(2026, 12, 24);
+        LocalDate end = LocalDate.of(2027, 1, 3);
+
+        double days = calculator.calculateAnnualLeaveDays(start, end, holidays);
+
+        // Total 11 - weekends (26,27,2,3) 4 - PH (25 Dec, 1 Jan) 2 = 5
+        assertEquals(5.0, days);
     }
 
     // ── Medical leave calculation ─────────────────────────────
@@ -117,6 +136,42 @@ class LeaveCalculatorTest {
     void isWorkingDay_normalWeekday_returnsTrue() {
         LocalDate tuesday = LocalDate.of(2026, 3, 10);
         assertTrue(calculator.isWorkingDay(tuesday, holidays2026));
+    }
+
+    @Test
+    @DisplayName("Observed Monday after Sunday PH is excluded from deduction")
+    void annualLeave_observedMondayAfterSundayPH_excludedFromDeduction() {
+    List<PublicHoliday> holidays = List.of(
+        new PublicHoliday(LocalDate.of(2026, 8, 9), "National Day") // Sunday
+    );
+
+    LocalDate start = LocalDate.of(2026, 8, 3); // Mon
+    LocalDate end = LocalDate.of(2026, 8, 16);  // Sun, exactly 14 calendar days
+
+    double days = calculator.calculateAnnualLeaveDays(start, end, holidays);
+    // 14 calendar days, weekends = 4 days, and Monday 10 Aug observed as PH off-in-lieu
+    assertEquals(9.0, days);
+    }
+
+    @Test
+    @DisplayName("Double holiday cascades observed day to Tuesday")
+    void annualLeave_doubleHoliday_cascadesToTuesday() {
+    List<PublicHoliday> holidays = List.of(
+        new PublicHoliday(LocalDate.of(2026, 2, 15), "CNY Day 1"), // Sunday
+        new PublicHoliday(LocalDate.of(2026, 2, 16), "CNY Day 2")  // Monday
+    );
+
+    // 15th (Sun, PH) -> 16th (Mon, PH) -> 17th (Tue, Observed PH)
+    // If we take leave from 13th (Fri) to 18th (Wed)
+    LocalDate start = LocalDate.of(2026, 2, 13);
+    LocalDate end = LocalDate.of(2026, 2, 18);
+
+    double days = calculator.calculateAnnualLeaveDays(start, end, holidays);
+    // Total calendar days: 6 (13,14,15,16,17,18)
+    // Weekends: 2 (14, 15)
+    // Holidays on weekdays: 16 (Mon), 17 (Tue)
+    // Working days to be deducted: 13 (Fri), 18 (Wed) = 2 days
+    assertEquals(2.0, days);
     }
 
     // ── Compensation leave calculation ────────────────────────
