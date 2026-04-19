@@ -17,6 +17,12 @@
             <a th:href="@{/admin/holidays/new}" class="btn btn-primary btn-sm">
                 <i class="bi bi-plus-circle"></i> Add Holiday
             </a>
+            <form th:action="@{/admin/holidays/sync}" method="post" class="d-inline">
+            <input type="hidden" name="year" th:value="${year}" />
+            <button type="submit" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-repeat"></i> Sync from API
+            </button>
+        </form>
         </div>
     </div>
     <div class="card shadow-sm">
@@ -34,7 +40,7 @@
                         <td th:text="${h.holidayDate.dayOfWeek.getDisplayName(T(java.time.format.TextStyle).FULL, T(java.util.Locale).ENGLISH)}"></td>
                         <td th:text="${h.description}"></td>
                         <td>
-                            <form method="POST" th:action="@{'/admin/holidays/' + ${holiday.id} + '/delete'}" style="display: inline;">
+                            <form method="POST" th:action="@{'/admin/holidays/' + ${h.id} + '/delete'}" style="display: inline;">
                                 <button type="submit" class="btn btn-outline-danger btn-sm"
                                         onclick="return confirm('Delete this holiday?');">Delete</button>
                             </form>

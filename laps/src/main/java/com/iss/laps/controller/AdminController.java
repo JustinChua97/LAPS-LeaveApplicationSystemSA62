@@ -23,6 +23,8 @@ import com.iss.laps.model.Employee;
 import com.iss.laps.model.LeaveEntitlement;
 import com.iss.laps.model.LeaveType;
 import com.iss.laps.model.PublicHoliday;
+import com.iss.laps.dto.HolidaySyncResult;
+import com.iss.laps.exception.PublicHolidaySyncException;
 import com.iss.laps.model.Role;
 import com.iss.laps.service.AdminService;
 import com.iss.laps.service.EmployeeService;
@@ -305,4 +307,17 @@ public class AdminController {
         redirectAttrs.addFlashAttribute("success", "Holiday deleted.");
         return "redirect:/admin/holidays";
     }
+    @PostMapping("/holidays/sync")
+public String syncHolidays(@RequestParam int year, RedirectAttributes redirectAttrs) {
+    try {
+        HolidaySyncResult result = adminService.syncHolidaysFromCsv(year);
+        redirectAttrs.addFlashAttribute("success",
+            "Sync complete: " + result.added() + " added, " + result.skipped() + " skipped.");
+    } catch (IllegalArgumentException e) {
+        redirectAttrs.addFlashAttribute("error", e.getMessage());
+    } catch (PublicHolidaySyncException e) {
+        redirectAttrs.addFlashAttribute("error", "Holiday sync failed. Please try again or add manually.");
+    }
+    return "redirect:/admin/holidays";
+}
 }

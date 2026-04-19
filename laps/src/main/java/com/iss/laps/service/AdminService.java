@@ -1,4 +1,5 @@
 package com.iss.laps.service;
+import com.iss.laps.dto.HolidaySyncResult;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -28,7 +29,7 @@ public class AdminService {
     private final LeaveEntitlementRepository leaveEntitlementRepository;
     private final LeaveTypeRepository leaveTypeRepo;
     private final PublicHolidayRepository publicHolidayRepo;
-
+    private final PublicHolidayCsvService publicHolidayCsvService;  
     // =========== LEAVE TYPES ===========
 
     public List<LeaveType> getAllLeaveTypes() {
@@ -143,4 +144,25 @@ public class AdminService {
     public boolean isHolidayDateTaken(LocalDate date) {
         return publicHolidayRepo.existsByHolidayDate(date);
     }
+    @Transactional
+public HolidaySyncResult syncHolidaysFromCsv(int year) {
+    if (year < 2020 || year > 2099) {
+        throw new IllegalArgumentException("Year must be between 2020 and 2099");
+    }
+
+    String csvUrl = "https://data.gov.sg/datasets/d_149b61ad0a22f61c09dc80f2df5bbec8/download/public-holidays.csv";
+    List<PublicHoliday> fetched = publicHolidayCsvService.fetchHolidaysFromCsv(csvUrl);
+
+    int added = 0, skipped = 0;
+    for (PublicHoliday h : fetched) {
+        if (h.getYear() != year) continue;
+        if (publicHolidayRepo.existsByHolidayDate(h.getHolidayDate())) {
+            skipped++;
+        } else {
+            publicHolidayRepo.save(h);
+            added++;
+        }
+    }
+    return new HolidaySyncResult(added, skipped);
+}
 }
