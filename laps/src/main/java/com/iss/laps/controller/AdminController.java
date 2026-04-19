@@ -55,13 +55,16 @@ public class AdminController {
 
     // =========== EMPLOYEE MANAGEMENT ===========
 
-    /** Roles that can be assigned via the employee management UI (ROLE_ADMIN excluded). */
+    /**
+     * Roles that can be assigned via the employee management UI (ROLE_ADMIN
+     * excluded).
+     */
     private List<Role> employeeRoles() {
         return Arrays.stream(Role.values())
                 .filter(r -> r != Role.ROLE_ADMIN)
                 .toList();
     }
-    
+
     @GetMapping("/employees")
     public String listEmployees(Model model) {
         model.addAttribute("employees", employeeService.findAllIncludingInactive());
@@ -79,12 +82,12 @@ public class AdminController {
 
     @PostMapping("/employees/new")
     public String createEmployee(@Valid @ModelAttribute("employee") Employee employee,
-                                  BindingResult result,
-                                  @RequestParam(required = false) Long managerId,
-                                  Model model,
-                                  RedirectAttributes redirectAttrs) {
+            BindingResult result,
+            @RequestParam(required = false) Long managerId,
+            Model model,
+            RedirectAttributes redirectAttrs) {
         if (result.hasErrors()) {
-        	model.addAttribute("roles", employeeRoles());
+            model.addAttribute("roles", employeeRoles());
             model.addAttribute("designations", Arrays.asList(Designation.values()));
             model.addAttribute("managers", employeeService.findByRole(Role.ROLE_MANAGER));
             return "admin/employee-form";
@@ -125,11 +128,11 @@ public class AdminController {
 
     @PostMapping("/employees/{id}/edit")
     public String updateEmployee(@PathVariable Long id,
-    							  @Valid @ModelAttribute("employeeForm") EmployeeEditForm form,
-                                  BindingResult result,
-                                  @RequestParam(required = false) Long managerId,
-                                  Model model,
-                                  RedirectAttributes redirectAttrs) {
+            @Valid @ModelAttribute("employeeForm") EmployeeEditForm form,
+            BindingResult result,
+            @RequestParam(required = false) Long managerId,
+            Model model,
+            RedirectAttributes redirectAttrs) {
         if (result.hasErrors()) {
             model.addAttribute("employee", employeeService.findById(id));
             model.addAttribute("roles", employeeRoles());
@@ -186,12 +189,11 @@ public class AdminController {
         return "admin/entitlements";
     }
 
-    
     @PostMapping("/entitlements/{id}/update")
     public String updateEntitlement(@PathVariable Long id,
-                                      @RequestParam double totalDays,
-                                      @RequestParam Long employeeId,
-                                      RedirectAttributes redirectAttrs) {
+            @RequestParam double totalDays,
+            @RequestParam Long employeeId,
+            RedirectAttributes redirectAttrs) {
         try {
             employeeService.updateEntitlement(id, totalDays);
             redirectAttrs.addFlashAttribute("success", "Entitlement updated.");
@@ -220,14 +222,14 @@ public class AdminController {
         if (result.hasErrors()) {
             return "admin/leave-type-form";
         }
-        
+
         try {
-            adminService.createLeaveType(leaveType);  // Use the new method
+            adminService.createLeaveType(leaveType); // Use the new method
             redirectAttrs.addFlashAttribute("success", "Leave type created successfully!");
         } catch (LeaveApplicationException e) {
             redirectAttrs.addFlashAttribute("error", e.getMessage());
         }
-        
+
         return "redirect:/admin/leave-types";
     }
 
@@ -239,9 +241,9 @@ public class AdminController {
 
     @PostMapping("/leave-types/{id}/edit")
     public String updateLeaveType(@PathVariable Long id,
-                                   @Valid @ModelAttribute("leaveType") LeaveType leaveType,
-                                   BindingResult result,
-                                   RedirectAttributes redirectAttrs) {
+            @Valid @ModelAttribute("leaveType") LeaveType leaveType,
+            BindingResult result,
+            RedirectAttributes redirectAttrs) {
         leaveType.setId(id);
         if (result.hasErrors()) {
             return "admin/leave-type-form";
@@ -250,11 +252,11 @@ public class AdminController {
             adminService.saveLeaveType(leaveType);
             redirectAttrs.addFlashAttribute("success", "Leave type updated.");
         } catch (LeaveApplicationException e) {
-            redirectAttrs.addFlashAttribute("error", "Not allowed to edit a leave entitlement to have more than 365 days.");
+            redirectAttrs.addFlashAttribute("error",
+                    "Not allowed to edit a leave entitlement to have more than 365 days.");
         }
         return "redirect:/admin/leave-types";
     }
-
 
     @PostMapping("/leave-types/{id}/delete")
     public String deleteLeaveType(@PathVariable Long id, RedirectAttributes redirectAttrs) {
@@ -267,12 +269,11 @@ public class AdminController {
         return "redirect:/admin/leave-types";
     }
 
-
     // =========== PUBLIC HOLIDAYS ===========
 
     @GetMapping("/holidays")
     public String listHolidays(@RequestParam(defaultValue = "#{T(java.time.LocalDate).now().year}") int year,
-                                Model model) {
+            Model model) {
         model.addAttribute("holidays", adminService.getHolidaysByYear(year));
         model.addAttribute("year", year);
         return "admin/holidays";
@@ -286,8 +287,8 @@ public class AdminController {
 
     @PostMapping("/holidays/new")
     public String createHoliday(@Valid @ModelAttribute("holiday") PublicHoliday holiday,
-                                BindingResult result,
-                                RedirectAttributes redirectAttrs) {
+            BindingResult result,
+            RedirectAttributes redirectAttrs) {
         if (result.hasErrors()) {
             return "admin/holiday-form";
         }
@@ -307,17 +308,18 @@ public class AdminController {
         redirectAttrs.addFlashAttribute("success", "Holiday deleted.");
         return "redirect:/admin/holidays";
     }
+
     @PostMapping("/holidays/sync")
-public String syncHolidays(@RequestParam int year, RedirectAttributes redirectAttrs) {
-    try {
-        HolidaySyncResult result = adminService.syncHolidaysFromCsv(year);
-        redirectAttrs.addFlashAttribute("success",
-            "Sync complete: " + result.added() + " added, " + result.skipped() + " skipped.");
-    } catch (IllegalArgumentException e) {
-        redirectAttrs.addFlashAttribute("error", e.getMessage());
-    } catch (PublicHolidaySyncException e) {
-        redirectAttrs.addFlashAttribute("error", "Holiday sync failed. Please try again or add manually.");
+    public String syncHolidays(@RequestParam int year, RedirectAttributes redirectAttrs) {
+        try {
+            HolidaySyncResult result = adminService.syncHolidaysFromCsv(year);
+            redirectAttrs.addFlashAttribute("success",
+                    "Sync complete: " + result.added() + " added, " + result.skipped() + " already exist.");
+        } catch (IllegalArgumentException e) {
+            redirectAttrs.addFlashAttribute("error", e.getMessage());
+        } catch (PublicHolidaySyncException e) {
+            redirectAttrs.addFlashAttribute("error", "Holiday sync failed. Please try again or add manually.");
+        }
+        return "redirect:/admin/holidays";
     }
-    return "redirect:/admin/holidays";
-}
 }
