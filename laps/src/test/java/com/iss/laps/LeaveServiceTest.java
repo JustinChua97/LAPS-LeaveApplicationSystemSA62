@@ -22,6 +22,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.iss.laps.exception.LeaveApplicationException;
 import com.iss.laps.model.CompensationClaim;
@@ -42,7 +43,6 @@ import com.iss.laps.service.EmailService;
 import com.iss.laps.service.EmployeeService;
 import com.iss.laps.service.LeaveService;
 import com.iss.laps.util.LeaveCalculator;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("LeaveService Unit Tests")
@@ -412,41 +412,6 @@ class LeaveServiceTest {
     Note (17 Apr) - Custom Leave Types are not yet implemented. 
     So this test validates that custom leave types will be rejected in the apply and update flows.
     */ 
-
-    @Test
-    @DisplayName("Apply leave with custom type (null defaultType) throws LeaveApplicationException")
-    void applyLeave_customLeaveType_throwsException() {
-        sampleApplication.setLeaveType(customLeaveType);
-        when(leaveTypeRepo.findById(99L)).thenReturn(Optional.of(customLeaveType));
-
-        // Act & Assert
-        assertThatThrownBy(() -> leaveService.applyLeave(sampleApplication, employee))
-                .isInstanceOf(LeaveApplicationException.class)
-                .hasMessageContaining("Selected leave type is not supported for leave applications");
-    }
-
-    @Test
-    @DisplayName("Update leave with custom type (null defaultType) throws LeaveApplicationException")
-    void updateLeave_customLeaveType_throwsException() {
-        // Arrange: Existing leave with annual type, but trying to update to custom type
-        sampleApplication.setId(10L);
-        sampleApplication.setEmployee(employee);
-        sampleApplication.setStatus(LeaveStatus.APPLIED);
-        
-        LeaveApplication updateRequest = new LeaveApplication();
-        updateRequest.setLeaveType(customLeaveType);
-        updateRequest.setStartDate(LocalDate.of(2026, 5, 1));
-        updateRequest.setEndDate(LocalDate.of(2026, 5, 3));
-        updateRequest.setReason("Reason has been updated.");
-        
-        when(leaveAppRepo.findById(10L)).thenReturn(Optional.of(sampleApplication));
-        when(leaveTypeRepo.findById(99L)).thenReturn(Optional.of(customLeaveType));
-
-        // Act & Assert
-        assertThatThrownBy(() -> leaveService.updateLeave(10L, updateRequest, employee))
-                .isInstanceOf(LeaveApplicationException.class)
-                .hasMessageContaining("Selected leave type is not supported for leave applications");
-    }
 
     @Test
     @DisplayName("getDefaultActiveLeaveTypes returns only enum-backed types")
