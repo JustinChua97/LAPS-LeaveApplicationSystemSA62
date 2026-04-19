@@ -197,10 +197,6 @@ class LeaveServiceTest {
         LeaveEntitlement entitlement = new LeaveEntitlement(employee, annualLeaveType, 2026, 14);
         when(leaveTypeRepo.findById(1L)).thenReturn(Optional.of(annualLeaveType));
         when(publicHolidayRepo.findByYear(anyInt())).thenReturn(List.of());
-        when(leaveEntitlementRepo.findByEmployeeAndLeaveTypeAndYear(any(), any(), anyInt()))
-                .thenReturn(Optional.of(entitlement));
-        when(leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(any(), anyLong(), anyInt(), isNull()))
-                .thenReturn(0.0);
         when(leaveCalculator.isWorkingDay(eq(LocalDate.of(2026, 4, 9)), any())).thenReturn(true);
         when(leaveCalculator.calculateAnnualLeaveDays(any(), any(), any())).thenReturn(2.0);
         
@@ -543,7 +539,7 @@ class LeaveServiceTest {
                 .thenReturn(Optional.of(entitlement));
         when(leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(any(), anyLong(), anyInt(), isNull()))
                 .thenReturn(0.0);
-        when(leaveCalculator.calculateAnnualLeaveDays(any(), any(), any())).thenReturn(9.0);
+        when(leaveCalculator.isWorkingDay(eq(LocalDate.of(2026, 4, 27)), any())).thenReturn(true);
         when(leaveAppRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
         doNothing().when(emailService).sendLeaveApplicationNotification(any(), eq(EmailService.NotificationType.APPLICATION));
 
@@ -580,7 +576,7 @@ class LeaveServiceTest {
             .thenReturn(Optional.of(entitlement));
         when(leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(any(), anyLong(), anyInt(), isNull()))
             .thenReturn(0.0);
-        when(leaveCalculator.calculateAnnualLeaveDays(any(), any(), any())).thenReturn(9.0);
+        when(leaveCalculator.isWorkingDay(eq(LocalDate.of(2026, 8, 3)), any())).thenReturn(true);
         when(leaveAppRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
         doNothing().when(emailService).sendLeaveApplicationNotification(any(), eq(EmailService.NotificationType.APPLICATION));
 
