@@ -1,6 +1,5 @@
 package com.iss.laps.service;
 
-import com.iss.laps.dto.EmployeeEditForm;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -9,6 +8,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.iss.laps.dto.EmployeeEditForm;
 import com.iss.laps.exception.LeaveApplicationException;
 import com.iss.laps.exception.ResourceNotFoundException;
 import com.iss.laps.model.Designation;
@@ -149,10 +149,12 @@ public class EmployeeService {
         }
         List<LeaveType> leaveTypes = leaveTypeRepository.findByActive(true);
         for (LeaveType lt : leaveTypes) {
-            if (lt.getDefaultType() != null) {
             double days = 0.0;
-            
-                switch (lt.getDefaultType()) {
+
+            if (lt.getDefaultType() == null) {
+                days = lt.getMaxDaysPerYear();
+                } else {
+                    switch (lt.getDefaultType()) {
                     case ANNUAL:
                         days = employee.getDesignation().getAnnualLeaveEntitlement();
                         break;
@@ -168,13 +170,12 @@ public class EmployeeService {
                     default:
                         break;
                 }
-
+            }
             LeaveEntitlement ent = new LeaveEntitlement(employee, lt, year, days);
             leaveEntitlementRepository.save(ent);
             }
         }
-    }
-
+    
     public List<LeaveEntitlement> getEntitlements(Employee employee, int year) {
         if (employee.getRole() == Role.ROLE_ADMIN) {
             throw new IllegalStateException("ROLE_ADMIN accounts do not have leave entitlements.");
@@ -187,11 +188,11 @@ public class EmployeeService {
         if (totalDays < 0) {
             throw new LeaveApplicationException("Total entitlement cannot be negative.");
         }
-
+        
         if (totalDays > 365) {
             throw new LeaveApplicationException("Total entitlement cannot exceed 365 days.");
         }
-
+        
         LeaveEntitlement entitlement = leaveEntitlementRepository.findById(entitlementId)
             .orElseThrow(() -> new ResourceNotFoundException("Entitlement not found"));
 
@@ -204,10 +205,17 @@ public class EmployeeService {
                 "Total entitlement cannot be less than used days (" + entitlement.getUsedDays() + ").");
         }
 
+        LeaveType leaveType = entitlement.getLeaveType();
         double maxAllowed = getMaxEntitlementFor(entitlement.getEmployee(), entitlement.getLeaveType());
         if (totalDays > maxAllowed) {
             throw new LeaveApplicationException(
                 "Total entitlement exceeds the allowed cap of " + maxAllowed + " days for this leave type.");
+        }
+
+        //Custom Leave Type - Must exactly match the max days per year set for the custom leave type
+        if (leaveType.getDefaultType() == null && totalDays != leaveType.getMaxDaysPerYear()) {
+        throw new LeaveApplicationException(
+            "Total entitlement must be exactly " + leaveType.getMaxDaysPerYear() + " days for this custom leave type.");
         }
 
         entitlement.setTotalDays(totalDays);
@@ -223,9 +231,8 @@ public class EmployeeService {
         LeaveTypeDefault type = leaveType.getDefaultType();
 
         if (type == null) {
-            return 365;
-        }
-
+            return leaveType.getMaxDaysPerYear();
+        } 
         switch (type) {
             case ANNUAL:
                 return employee.getDesignation().getAnnualLeaveEntitlement();
@@ -236,8 +243,8 @@ public class EmployeeService {
             case COMPENSATION:
                 return 108;
             default:
-                return 365; 
-                // Currently the maximum entitlement is set as 365 days temporarily. 
+                return leaveType.getMaxDaysPerYear(); 
+                // The maximum entitlement is set as 365 days in the LeaveType model layer. 
                 // This is to accomodate any future enhancements in LAPS where new leave types may be granted - e.g. Maternity leave, No-Pay Leave (NPL) etc.
         }
     }

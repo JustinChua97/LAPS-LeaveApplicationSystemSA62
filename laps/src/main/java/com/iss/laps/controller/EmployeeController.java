@@ -144,7 +144,7 @@ public class EmployeeController {
         Employee employee = securityUtils.getCurrentEmployee();
 
         if (result.hasErrors()) {
-            model.addAttribute("leaveTypes", leaveService.getDefaultActiveLeaveTypes());
+            model.addAttribute("leaveTypes", leaveService.getActiveLeaveTypes());
             return "employee/leave-edit";
         }
 
@@ -154,7 +154,7 @@ public class EmployeeController {
             return "redirect:/employee/leaves";
         } catch (LeaveApplicationException e) {
             model.addAttribute("error", e.getMessage());
-            model.addAttribute("leaveTypes", leaveService.getDefaultActiveLeaveTypes());
+            model.addAttribute("leaveTypes", leaveService.getActiveLeaveTypes());
             return "employee/leave-edit";
         }
     }
@@ -222,7 +222,7 @@ public class EmployeeController {
 
     private void populateLeaveFormModel(Model model) {
         int year = LocalDate.now().getYear();
-        model.addAttribute("leaveTypes", leaveService.getDefaultActiveLeaveTypes());
+        model.addAttribute("leaveTypes", leaveService.getActiveLeaveTypes());
         model.addAttribute("today", LocalDate.now());
         model.addAttribute("publicHolidays", leaveService.getPublicHolidaysForYear(year));
     }

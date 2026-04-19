@@ -8,10 +8,12 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
 
 @Entity
 @Table(name = "leave_types")
@@ -33,6 +35,7 @@ public class LeaveType {
     @Column
     private String description;
 
+    @Max(365)
     @Column(nullable = false)
     private int maxDaysPerYear;
 

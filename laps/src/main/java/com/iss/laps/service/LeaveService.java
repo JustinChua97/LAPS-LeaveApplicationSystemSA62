@@ -335,15 +335,6 @@ public class LeaveService {
     }
 
     private void validateLeaveApplication(LeaveApplication application, Employee employee, Long excludeId) {
-        LeaveType leaveType = application.getLeaveType();
-        if (leaveType == null) {
-            throw new LeaveApplicationException("Leave type is required");
-        }
-        LeaveTypeDefault typeLeave = leaveType.getDefaultType();
-        if (typeLeave == null) {
-            throw new LeaveApplicationException("Selected leave type is not supported for leave applications");
-        }
-
         //Step 1 - Generic Check if start and end dates are valid
         LocalDate start = application.getStartDate();
         LocalDate end = application.getEndDate();
@@ -354,10 +345,33 @@ public class LeaveService {
         if (end.isBefore(start)) {
             throw new LeaveApplicationException("End date must be after or equal to start date");
         }
+                         
+        // Step 2 - Resolve leave type safely
+        LeaveType leaveType = application.getLeaveType();
+        if (leaveType == null) {
+            throw new LeaveApplicationException("Leave type is required");
+        }
 
-        //Step 2 - Switch scenario for leave types
+        LeaveTypeDefault typeLeave = leaveType.getDefaultType();
         double duration = calculateDuration(application);
+        List<PublicHoliday> holidays = publicHolidayRepo.findByYear(start.getYear());
 
+        // Step 3 - Custom leave type path (defaultType is null)
+        if (typeLeave == null) {
+            if (!leaveCalculator.areWorkingDays(start, end, holidays)) {
+                throw new LeaveApplicationException("Start and end dates must be working days");
+            }
+
+        double usedDays = leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(
+            employee, leaveType.getId(), start.getYear(), excludeId);
+
+        if (usedDays + duration > leaveType.getMaxDaysPerYear()) {
+            throw new LeaveApplicationException(
+                "Insufficient leave balance. Remaining: " + (leaveType.getMaxDaysPerYear() - usedDays) + " days");
+            }
+
+            return;
+        }
             switch (typeLeave) {
                 case ANNUAL:
                     //Confirm that no single annual leave application can exceed 14 conseuctive calendar days
@@ -367,7 +381,6 @@ public class LeaveService {
                     }
 
                     //Confirm that the start and end dates of the application is on a working day
-                    List<PublicHoliday> holidays = publicHolidayRepo.findByYear(start.getYear());
                     if (!leaveCalculator.areWorkingDays(start, end, holidays)) {
                         throw new LeaveApplicationException("Start and end dates must be working days for annual leave");
                     }
@@ -397,7 +410,6 @@ public class LeaveService {
                     // Medical Leave: max 14 days/year. Any more than that, and the employee will be directed to apply for hospitalisation leave.
                     // FOR FUTURE IMPLEMENTATION:
                     // FEATURE - If submitted medical leave is more than balance, to deduct the balance to zero, and the remainder of the submitted leave is to be deducted from hospitalisation leave.
-                    double medicalDuration = calculateDuration(application);
                     double usedMedDays = leaveAppRepo.sumUsedDaysByEmployeeAndLeaveTypeAndYear(
                             employee, leaveType.getId(), start.getYear(),null);
                     if (usedMedDays + duration > 14) {
@@ -425,9 +437,9 @@ public class LeaveService {
                     break;
                     
                     default:
-                        throw new LeaveApplicationException("This leave type is not yet implemented."); // Future Leave handling logic can be included here
+                        break;
                 }
-        }
+            }
 
     private double calculateDuration(LeaveApplication application) {
         LeaveType leaveType = application.getLeaveType();
@@ -452,7 +464,7 @@ public class LeaveService {
         
         LeaveTypeDefault typeLeave = leaveType.getDefaultType();
         if (typeLeave == null) {
-            throw new LeaveApplicationException("Selected leave type is not supported for leave applications");
+            return leaveCalculator.calculateAnnualLeaveDays(start, end, holidays);
         }
         
         // Refactored into Switch statement
@@ -466,7 +478,7 @@ public class LeaveService {
             case COMPENSATION:
                 return leaveCalculator.calculateCompensationLeaveDays(start, end);
             default:
-                throw new LeaveApplicationException("This leave type is not yet implemented.");
+                throw new LeaveApplicationException("Error: Unsupported leave type");
             }
         }
 
