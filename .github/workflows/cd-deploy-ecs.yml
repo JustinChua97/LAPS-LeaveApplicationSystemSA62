@@ -1,0 +1,90 @@
+name: CD - Deploy to ECS Fargate
+
+on:
+  workflow_run:
+    workflows: [ "CI - Build, Test, Scan and Push to ECR" ]
+    types: [ completed ]
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      image_sha:
+        description: 'Git SHA of the ECR image to deploy (must already be pushed by CI)'
+        required: true
+
+concurrency:
+  group: deploy-ecs
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to ECS Fargate
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Resolve ECR image URI
+        id: image
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          DISPATCH_SHA: ${{ inputs.image_sha }}
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          ECR_URL="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/laps"
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            SHA="$WORKFLOW_RUN_SHA"
+          else
+            SHA="$DISPATCH_SHA"
+          fi
+          echo "image=${ECR_URL}:${SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Register new ECS task definition revision with updated image
+        id: task-def
+        run: |
+          # Pull current task definition, strip read-only fields, swap image tag
+          NEW_TASK_DEF=$(aws ecs describe-task-definition \
+            --task-definition laps-task \
+            --query taskDefinition \
+            --output json \
+          | jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)
+                | .containerDefinitions[0].image = "${{ steps.image.outputs.image }}"')
+
+          NEW_ARN=$(aws ecs register-task-definition \
+            --cli-input-json "$NEW_TASK_DEF" \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+          echo "arn=${NEW_ARN}" >> "$GITHUB_OUTPUT"
+
+      - name: Update ECS service with new task definition
+        run: |
+          aws ecs update-service \
+            --cluster ${{ secrets.ECS_CLUSTER }} \
+            --service ${{ secrets.ECS_SERVICE }} \
+            --task-definition ${{ steps.task-def.outputs.arn }} \
+            --force-new-deployment
+
+      - name: Wait for service to stabilise
+        run: |
+          aws ecs wait services-stable \
+            --cluster ${{ secrets.ECS_CLUSTER }} \
+            --services ${{ secrets.ECS_SERVICE }}
+
+      - name: Print deployment summary
+        run: |
+          echo "Deployed: ${{ steps.image.outputs.image }}"
+          echo "Task def: ${{ steps.task-def.outputs.arn }}"
