@@ -101,7 +101,7 @@ ALB_SG_ID=$(aws ec2 describe-security-groups \
 if [[ "$ALB_SG_ID" == "None" || "$ALB_SG_ID" == "null" ]]; then
   ALB_SG_ID=$(aws ec2 create-security-group \
     --group-name "${PREFIX}-alb-sg" \
-    --description "LAPS ALB — allow HTTPS from internet" \
+    --description "LAPS ALB - allow HTTPS from internet" \
     --vpc-id "${VPC_ID}" \
     --query GroupId --output text)
   aws ec2 authorize-security-group-ingress \
@@ -123,7 +123,7 @@ ECS_SG_ID=$(aws ec2 describe-security-groups \
 if [[ "$ECS_SG_ID" == "None" || "$ECS_SG_ID" == "null" ]]; then
   ECS_SG_ID=$(aws ec2 create-security-group \
     --group-name "${PREFIX}-ecs-sg" \
-    --description "LAPS ECS tasks — allow port 8080 from ALB only" \
+    --description "LAPS ECS tasks - allow port 8080 from ALB only" \
     --vpc-id "${VPC_ID}" \
     --query GroupId --output text)
   aws ec2 authorize-security-group-ingress \
