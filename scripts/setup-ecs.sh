@@ -212,9 +212,7 @@ CLUSTER_STATUS=$(aws ecs describe-clusters \
 
 if [[ "$CLUSTER_STATUS" != "ACTIVE" ]]; then
   aws ecs create-cluster \
-    --cluster-name "${PREFIX}" \
-    --capacity-providers FARGATE \
-    --default-capacity-provider-strategy capacityProvider=FARGATE,weight=1 > /dev/null
+    --cluster-name "${PREFIX}" > /dev/null
   echo "  Created ECS cluster: ${PREFIX}"
 else
   echo "  Reusing ECS cluster: ${PREFIX}"
