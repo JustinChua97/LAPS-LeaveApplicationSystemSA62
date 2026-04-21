@@ -107,7 +107,7 @@ jobs:
       - name: Write environment file on EC2
         run: |
           cat > /tmp/laps.env << 'EOF'
-          DB_URL=jdbc:postgresql://postgres:5432/lapsdb
+          DB_URL=jdbc:postgresql://${{ secrets.RDS_ENDPOINT }}/lapsdb
           DB_USERNAME=${{ secrets.DB_USERNAME }}
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
           MAIL_HOST=${{ secrets.MAIL_HOST }}
@@ -145,9 +145,9 @@ jobs:
             rm /tmp/nginx.conf.template
           REMOTE
 
-      - name: Copy docker-compose.yml to EC2
+      - name: Copy docker-compose.rds.yml to EC2
         run: |
-          scp docker-compose.yml \
+          scp docker-compose.rds.yml \
             ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/laps/docker-compose.yml
 
       - name: Log in to ECR on EC2 and deploy

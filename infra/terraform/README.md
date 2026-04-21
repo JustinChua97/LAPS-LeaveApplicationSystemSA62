@@ -1,11 +1,9 @@
 # LAPS AWS Academy Terraform — ECR Repository
 
-This folder manages a single AWS resource: the **ECR private repository** that stores
-the LAPS Docker image.
+This folder manages the **ECR private repository** that stores the LAPS Docker image.
 
-The EC2 instance, security group, and all other infrastructure are managed manually
-in AWS Academy. IAM constraints in the lab environment prevent full IaC coverage of
-those resources.
+The EC2 instance, VPC, RDS database, and all other infrastructure are managed manually
+in AWS Academy. IAM constraints in the lab environment prevent full IaC coverage.
 
 ## What Terraform Manages
 
@@ -32,8 +30,9 @@ these GitHub secrets:
 - `EC2_HOST` — EC2 public DNS hostname
 - `EC2_USER` — SSH user (e.g. `ec2-user`)
 - `EC2_KNOWN_HOST` — output of `ssh-keyscan <EC2_HOST>`
-- App secrets: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `SEED_USER_PASSWORD`,
+- App secrets: `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `SEED_USER_PASSWORD`,
   `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`
+- `RDS_ENDPOINT` — RDS endpoint in `hostname:5432` format (from the AWS console)
 
 Configure these GitHub variables:
 
@@ -59,11 +58,27 @@ CD — deploy job (on push to main, after docker-push succeeds):
   4. aws ecr get-login-password | docker login $ECR_URL
   5. Generate TLS cert (setup-nginx-https.sh)
   6. Render nginx config from docker/nginx/nginx.conf.template via envsubst
-  7. Write /opt/laps/.env (app secrets from GitHub secrets)
-  8. Copy docker-compose.yml to EC2
+  7. Write /opt/laps/.env — DB_URL points to RDS_ENDPOINT secret
+  8. Copy docker-compose.rds.yml to EC2 as /opt/laps/docker-compose.yml
   9. LAPS_IMAGE=$ECR_URL:<sha> docker compose pull && docker compose up -d --remove-orphans
-  10. Health check: curl http://localhost:8080/login
+  10. Health check: wget http://localhost:8080/login
 ```
+
+## RDS Setup (one-time, before first deploy)
+
+Create the RDS instance manually in the AWS console:
+
+1. RDS → Create database → Standard create → PostgreSQL 16
+2. Template: **Free tier**
+3. DB instance identifier: `laps-postgres`
+4. Master username / password → set as `DB_USERNAME` / `DB_PASSWORD` GitHub Secrets
+5. Initial database name: `lapsdb`
+6. VPC: your Academy VPC; Subnet group: create new across 2 AZs
+7. VPC security group: create new; add inbound rule — PostgreSQL (5432) from EC2 private IP (`/32`)
+8. Public access: **No**
+9. After status is **Available**, copy the endpoint → set as `RDS_ENDPOINT` GitHub Secret (`hostname:5432`)
+
+Spring Boot seeds `lapsdb` automatically on first connect via `data.sql`.
 
 ## Security Properties
 
@@ -96,4 +111,4 @@ terraform destroy
 ```
 
 This removes only the ECR repository. It does not remove GitHub secrets, workflow
-artifacts, EC2 instances, or any other resources.
+artifacts, EC2 instances, RDS instances, or any other resources.
