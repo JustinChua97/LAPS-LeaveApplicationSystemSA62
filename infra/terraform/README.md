@@ -1,17 +1,19 @@
-# LAPS AWS Academy Terraform — ECR Repository
+# LAPS AWS Academy Terraform — ECR Repository + RDS
 
-This folder manages a single AWS resource: the **ECR private repository** that stores
-the LAPS Docker image.
+This folder manages the **ECR private repository** and, optionally, an **RDS PostgreSQL 16
+instance** to replace the local postgres container in the production deployment.
 
-The EC2 instance, security group, and all other infrastructure are managed manually
-in AWS Academy. IAM constraints in the lab environment prevent full IaC coverage of
-those resources.
+The EC2 instance, VPC, and all other infrastructure are managed manually in AWS Academy.
+IAM constraints in the lab environment prevent full IaC coverage of those resources.
 
 ## What Terraform Manages
 
-| Resource | Description |
-| --- | --- |
-| `aws_ecr_repository.laps` | Private ECR repo; tag mutability `IMMUTABLE`; scan on push enabled |
+| Resource | Description | Condition |
+| --- | --- | --- |
+| `aws_ecr_repository.laps` | Private ECR repo; tag mutability `IMMUTABLE`; scan on push enabled | Always |
+| `aws_security_group.rds` | Allows port 5432 from EC2 SG only; no public access | `rds_enabled = true` |
+| `aws_db_subnet_group.laps` | DB subnet group spanning ≥ 2 AZs | `rds_enabled = true` |
+| `aws_db_instance.laps` | PostgreSQL 16, `db.t3.micro`, 20 GiB gp2, encrypted, 7-day backups | `rds_enabled = true` |
 
 ## Prerequisites
 
@@ -32,8 +34,9 @@ these GitHub secrets:
 - `EC2_HOST` — EC2 public DNS hostname
 - `EC2_USER` — SSH user (e.g. `ec2-user`)
 - `EC2_KNOWN_HOST` — output of `ssh-keyscan <EC2_HOST>`
-- App secrets: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `SEED_USER_PASSWORD`,
+- App secrets: `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `SEED_USER_PASSWORD`,
   `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`
+- `RDS_ENDPOINT` — RDS endpoint in `hostname:5432` format (from console or `terraform output rds_endpoint`)
 
 Configure these GitHub variables:
 
@@ -47,7 +50,9 @@ AWS Academy credentials are session-based. Refresh the three AWS credential secr
 ```text
 CI — docker-push job (on push to main, after tests pass):
   1. configure-aws-credentials (session secrets)
-  2. terraform init / fmt-check / validate / apply  → creates ECR repo if not exists
+  2. terraform init / fmt-check / validate / apply
+       → creates ECR repo if not exists
+       → rds_enabled defaults to false so RDS steps are a no-op unless explicitly enabled
   3. ECR_URL=$(terraform output -raw ecr_repository_url)
   4. docker build -t $ECR_URL:${{ github.sha }} .
   5. docker push $ECR_URL:${{ github.sha }}
@@ -59,11 +64,38 @@ CD — deploy job (on push to main, after docker-push succeeds):
   4. aws ecr get-login-password | docker login $ECR_URL
   5. Generate TLS cert (setup-nginx-https.sh)
   6. Render nginx config from docker/nginx/nginx.conf.template via envsubst
-  7. Write /opt/laps/.env (app secrets from GitHub secrets)
-  8. Copy docker-compose.yml to EC2
+  7. Write /opt/laps/.env — DB_URL points to RDS_ENDPOINT secret
+  8. Copy docker-compose.rds.yml to EC2 as /opt/laps/docker-compose.yml
   9. LAPS_IMAGE=$ECR_URL:<sha> docker compose pull && docker compose up -d --remove-orphans
-  10. Health check: curl http://localhost:8080/login
+  10. Health check: wget http://localhost:8080/login
 ```
+
+## RDS Setup (one-time, before first RDS deploy)
+
+**Option A — Terraform (if IAM allows):**
+
+```bash
+cd infra/terraform
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars: set rds_enabled = true and fill in all rds_* values
+terraform init -backend-config="bucket=..." -backend-config="region=..."
+terraform apply
+# Copy the rds_endpoint output value → set as RDS_ENDPOINT GitHub Secret
+```
+
+**Option B — AWS Console (AWS Academy fallback):**
+
+1. RDS → Create database → Standard create → PostgreSQL 16
+2. Template: Free tier (or Dev/Test)
+3. DB instance identifier: `laps-postgres`
+4. Master username / password → set as `DB_USERNAME` / `DB_PASSWORD` GitHub Secrets
+5. DB name: `lapsdb`
+6. VPC: your Academy VPC; Subnet group: create new across 2 AZs
+7. VPC security group: create new; add inbound rule: PostgreSQL (5432) from EC2 SG
+8. Public access: No
+9. After creation, copy the endpoint → set as `RDS_ENDPOINT` GitHub Secret (format: `hostname:5432`)
+
+After setting `RDS_ENDPOINT`, push to main to trigger a deploy — Spring Boot will seed `lapsdb` automatically on first connect.
 
 ## Security Properties
 

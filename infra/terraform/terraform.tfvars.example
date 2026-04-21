@@ -1,2 +1,26 @@
 aws_region  = "us-east-1"
 name_prefix = "laps"
+
+# ── RDS (optional) ───────────────────────────────────────────────────────────
+# Set rds_enabled = true to provision a managed PostgreSQL 16 instance.
+# All fields below are required when rds_enabled = true.
+#
+# Find vpc_id, db_subnet_ids, and ec2_security_group_id in the AWS console:
+#   VPC → Your VPCs                    → copy VPC ID
+#   VPC → Subnets                      → copy two subnet IDs from different AZs
+#   EC2 → Security Groups              → copy the SG ID attached to your EC2 instance
+#
+# After apply, copy the rds_endpoint output value to the RDS_ENDPOINT GitHub Secret.
+#
+# AWS Academy note: if apply fails with an IAM error on rds:* actions, create
+# the instance manually in the console and skip setting rds_enabled = true.
+
+# rds_enabled           = true
+# vpc_id                = "vpc-0123456789abcdef0"
+# db_subnet_ids         = ["subnet-0123456789abcdef0", "subnet-abcdef0123456789"]
+# ec2_security_group_id = "sg-0123456789abcdef0"
+# db_username           = "lapsadmin"
+# db_password           = "change-me-min-8-chars"
+# db_instance_class     = "db.t3.micro"
+# db_allocated_storage  = 20
+# db_multi_az           = false
