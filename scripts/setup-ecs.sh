@@ -287,7 +287,7 @@ TASK_DEF_ARN=$(aws ecs register-task-definition \
         "command":     ["CMD-SHELL", "wget -qO /dev/null http://localhost:8080/login || exit 1"],
         "interval":    10,
         "timeout":     5,
-        "retries":     12,
+        "retries":     10,
         "startPeriod": 60
       }
     }]')" \
