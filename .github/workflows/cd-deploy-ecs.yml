@@ -1,5 +1,21 @@
 name: CD - Deploy to ECS Fargate
 
+# On every push to main (after CI passes) this workflow:
+#   1. Provisions ECS infrastructure if it does not yet exist (first run only)
+#   2. Registers a new task definition revision with the new image SHA
+#   3. Updates the ECS service and waits for it to stabilise
+#
+# Required GitHub Variables (Settings → Variables):
+#   AWS_REGION   — e.g. us-east-1
+#   VPC_ID       — VPC ID (only needed on first run, ignored once service is ACTIVE)
+#   SUBNET_IDS   — Two public subnet IDs, comma-separated (first run only)
+#
+# Required GitHub Secrets (Settings → Secrets):
+#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN
+#   RDS_ENDPOINT, DB_USERNAME, DB_PASSWORD
+#   JWT_SECRET, SEED_USER_PASSWORD
+#   MAIL_HOST, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD
+
 on:
   workflow_run:
     workflows: [ "CI - Build, Test, Scan and Push to ECR" ]
@@ -17,7 +33,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy to ECS Fargate
+    name: Setup (if needed) and Deploy to ECS Fargate
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
@@ -36,13 +52,16 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ vars.AWS_REGION }}
 
+      - name: Install jq
+        run: sudo apt-get install -y --no-install-recommends jq
+
       - name: Resolve ECR image URI
         id: image
         env:
-          AWS_REGION: ${{ vars.AWS_REGION }}
-          EVENT_NAME: ${{ github.event_name }}
+          AWS_REGION:       ${{ vars.AWS_REGION }}
+          EVENT_NAME:       ${{ github.event_name }}
           WORKFLOW_RUN_SHA: ${{ github.event.workflow_run.head_sha }}
-          DISPATCH_SHA: ${{ inputs.image_sha }}
+          DISPATCH_SHA:     ${{ inputs.image_sha }}
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           ECR_URL="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/laps"
@@ -53,10 +72,34 @@ jobs:
           fi
           echo "image=${ECR_URL}:${SHA}" >> "$GITHUB_OUTPUT"
 
+      - name: Provision ECS infrastructure (first run only — skipped if service is ACTIVE)
+        env:
+          VPC_ID:             ${{ vars.VPC_ID }}
+          SUBNET_IDS:         ${{ vars.SUBNET_IDS }}
+          AWS_REGION:         ${{ vars.AWS_REGION }}
+          DB_URL:             jdbc:postgresql://${{ secrets.RDS_ENDPOINT }}/lapsdb
+          DB_USERNAME:        ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD:        ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET:         ${{ secrets.JWT_SECRET }}
+          SEED_USER_PASSWORD: ${{ secrets.SEED_USER_PASSWORD }}
+          MAIL_HOST:          ${{ secrets.MAIL_HOST }}
+          MAIL_PORT:          ${{ secrets.MAIL_PORT }}
+          MAIL_USERNAME:      ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD:      ${{ secrets.MAIL_PASSWORD }}
+        run: |
+          STATUS=$(aws ecs describe-services \
+            --cluster laps --services laps-service \
+            --query 'services[0].status' --output text 2>/dev/null || echo "MISSING")
+          if [ "$STATUS" = "ACTIVE" ]; then
+            echo "ECS service is ACTIVE — skipping first-time setup."
+          else
+            echo "ECS service not found — running first-time setup..."
+            bash scripts/setup-ecs.sh
+          fi
+
       - name: Register new ECS task definition revision with updated image
         id: task-def
         run: |
-          # Pull current task definition, strip read-only fields, swap image tag
           NEW_TASK_DEF=$(aws ecs describe-task-definition \
             --task-definition laps-task \
             --query taskDefinition \
@@ -73,16 +116,16 @@ jobs:
       - name: Update ECS service with new task definition
         run: |
           aws ecs update-service \
-            --cluster ${{ secrets.ECS_CLUSTER }} \
-            --service ${{ secrets.ECS_SERVICE }} \
+            --cluster laps \
+            --service laps-service \
             --task-definition ${{ steps.task-def.outputs.arn }} \
             --force-new-deployment
 
       - name: Wait for service to stabilise
         run: |
           aws ecs wait services-stable \
-            --cluster ${{ secrets.ECS_CLUSTER }} \
-            --services ${{ secrets.ECS_SERVICE }}
+            --cluster laps \
+            --services laps-service
 
       - name: Print deployment summary
         run: |
