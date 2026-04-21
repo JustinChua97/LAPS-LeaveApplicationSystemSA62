@@ -1,0 +1,49 @@
+{
+  "family": "laps-task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/LabRole",
+  "taskRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/LabRole",
+  "containerDefinitions": [
+    {
+      "name": "laps-app",
+      "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/laps:<SHA>",
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "DB_URL",             "value": "jdbc:postgresql://<RDS_ENDPOINT>/lapsdb" },
+        { "name": "DB_USERNAME",        "value": "<DB_USERNAME>" },
+        { "name": "DB_PASSWORD",        "value": "<DB_PASSWORD>" },
+        { "name": "JWT_SECRET",         "value": "<JWT_SECRET>" },
+        { "name": "SEED_USER_PASSWORD", "value": "<SEED_USER_PASSWORD>" },
+        { "name": "MAIL_HOST",          "value": "<MAIL_HOST>" },
+        { "name": "MAIL_PORT",          "value": "<MAIL_PORT>" },
+        { "name": "MAIL_USERNAME",      "value": "<MAIL_USERNAME>" },
+        { "name": "MAIL_PASSWORD",      "value": "<MAIL_PASSWORD>" },
+        { "name": "EC2_HOST",           "value": "https://<ALB_DNS_NAME>" },
+        { "name": "MAIL_SMTP_SSL_TRUST","value": "sandbox.smtp.mailtrap.io" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/laps",
+          "awslogs-region": "<REGION>",
+          "awslogs-stream-prefix": "laps"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "wget -qO /dev/null http://localhost:8080/login || exit 1"],
+        "interval": 10,
+        "timeout": 5,
+        "retries": 10,
+        "startPeriod": 60
+      }
+    }
+  ]
+}
