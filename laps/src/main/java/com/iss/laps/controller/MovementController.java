@@ -8,6 +8,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -22,7 +23,8 @@ public class MovementController {
     @GetMapping
     public String movementRegister(@RequestParam(required = false) Integer year,
                                     @RequestParam(required = false) Integer month,
-                                    Model model) {
+                                    Model model,
+                                    RedirectAttributes redirectAttributes) {
         LocalDate now = LocalDate.now();
         int selectedYear = now.getYear();
         int selectedMonth = now.getMonthValue();
@@ -39,7 +41,8 @@ public class MovementController {
                 model.addAttribute("selectedYear", selectedYear);
                 model.addAttribute("selectedMonth", selectedMonth);
                 model.addAttribute("leaves", List.of());
-                return "common/movement-register";
+                redirectAttributes.addFlashAttribute("error", "Year must be between 2020 and 2035");
+                return "redirect:/movement?year=" + selectedYear + "&month=" + selectedMonth;
         }
         selectedYear = year;
         }
@@ -50,7 +53,8 @@ public class MovementController {
                 model.addAttribute("selectedYear", selectedYear);
                 model.addAttribute("selectedMonth", selectedMonth);
                 model.addAttribute("leaves", List.of());
-                return "common/movement-register";
+                redirectAttributes.addFlashAttribute("error", "Month must be between 1 and 12");
+                return "redirect:/movement?year=" + selectedYear + "&month=" + selectedMonth;
         }
         selectedMonth = month;
         }
