@@ -1,0 +1,57 @@
+name: ECS - One-time Fargate Infrastructure Setup
+
+# Run this ONCE to provision all AWS ECS infrastructure.
+# After this completes, future deploys use cd-deploy-ecs.yml automatically.
+#
+# Required GitHub Variables (Settings → Variables):
+#   VPC_ID      — VPC ID, e.g. vpc-0123456789abcdef0
+#   SUBNET_IDS  — Two public subnet IDs, comma-separated
+#
+# Required GitHub Secrets (Settings → Secrets) — same as existing deploy secrets:
+#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN
+#   DB_URL, DB_USERNAME, DB_PASSWORD, JWT_SECRET, SEED_USER_PASSWORD
+#   MAIL_HOST, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD, RDS_ENDPOINT
+#   GITHUB_TOKEN is provided automatically by Actions
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup:
+    name: Provision ECS Fargate infrastructure
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # secrets: write is not a valid permission — gh CLI uses GITHUB_TOKEN scoped below
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Run ECS setup script
+        env:
+          VPC_ID:              ${{ vars.VPC_ID }}
+          SUBNET_IDS:          ${{ vars.SUBNET_IDS }}
+          AWS_REGION:          ${{ vars.AWS_REGION }}
+          DB_URL:              jdbc:postgresql://${{ secrets.RDS_ENDPOINT }}/lapsdb
+          DB_USERNAME:         ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD:         ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET:          ${{ secrets.JWT_SECRET }}
+          SEED_USER_PASSWORD:  ${{ secrets.SEED_USER_PASSWORD }}
+          MAIL_HOST:           ${{ secrets.MAIL_HOST }}
+          MAIL_PORT:           ${{ secrets.MAIL_PORT }}
+          MAIL_USERNAME:       ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD:       ${{ secrets.MAIL_PASSWORD }}
+          GH_TOKEN:            ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/setup-ecs.sh

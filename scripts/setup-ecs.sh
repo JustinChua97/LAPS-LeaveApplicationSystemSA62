@@ -325,13 +325,20 @@ else
     --force-new-deployment > /dev/null
 fi
 
-# ── Set GitHub secrets ────────────────────────────────────────────────────────
+# ── Set GitHub secrets (skipped in CI — GITHUB_TOKEN cannot write secrets) ───
 echo ""
-echo "Setting GitHub secrets ECS_CLUSTER and ECS_SERVICE..."
-gh secret set ECS_CLUSTER --body "${PREFIX}"
-gh secret set ECS_SERVICE  --body "${PREFIX}-service"
-echo "  ECS_CLUSTER=${PREFIX}"
-echo "  ECS_SERVICE=${PREFIX}-service"
+if [[ -n "${GH_TOKEN:-}" ]] && gh auth status &>/dev/null 2>&1; then
+  echo "Setting GitHub secrets ECS_CLUSTER and ECS_SERVICE via gh CLI..."
+  gh secret set ECS_CLUSTER --body "${PREFIX}"
+  gh secret set ECS_SERVICE  --body "${PREFIX}-service"
+  echo "  ECS_CLUSTER=${PREFIX}"
+  echo "  ECS_SERVICE=${PREFIX}-service"
+else
+  echo "  Skipping gh secret set (GH_TOKEN not available or lacks permission)."
+  echo "  Set these two GitHub Secrets manually:"
+  echo "    ECS_CLUSTER = ${PREFIX}"
+  echo "    ECS_SERVICE = ${PREFIX}-service"
+fi
 
 # ── Done ─────────────────────────────────────────────────────────────────────
 echo ""
@@ -341,8 +348,13 @@ echo ""
 echo " ALB DNS : https://${ALB_DNS}"
 echo "           (self-signed cert — browser warning expected)"
 echo ""
+echo " GitHub Secrets to set manually if not set above:"
+echo "   ECS_CLUSTER = ${PREFIX}"
+echo "   ECS_SERVICE = ${PREFIX}-service"
+echo ""
 echo " Next steps:"
-echo "   1. Wait ~2 min for ECS task to reach RUNNING status"
-echo "   2. Check: ECS → ${PREFIX} cluster → ${PREFIX}-service → Tasks"
-echo "   3. Merge feat/ecs-fargate-122 — future deploys use ECS automatically"
+echo "   1. Set ECS_CLUSTER and ECS_SERVICE in GitHub Secrets if shown above"
+echo "   2. Wait ~2 min for ECS task to reach RUNNING status"
+echo "   3. Check: ECS → ${PREFIX} cluster → ${PREFIX}-service → Tasks"
+echo "   4. Merge feat/ecs-fargate-122 — future deploys use ECS automatically"
 echo "========================================================"
