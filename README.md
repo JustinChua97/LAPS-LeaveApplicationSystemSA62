@@ -6,6 +6,10 @@ ISS NUS SA62 Course Project | Spring Boot + PostgreSQL
 
 ## Quick Start (Local Development)
 
+### Contributors
+
+bryanpwy, abn-13, JustinChua97, Jemilin-code, KumaraguruSurya, AnimaExMachina, zctiong-iss 
+
 ### Prerequisites
 - Java 17+
 - Maven 3.9+
